@@ -3,6 +3,8 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders import TextLoader,PyPDFLoader
 import pandas as pd
 import re 
+from src.chunk import create_chunks
+from config import DATA_DIR
 
 def valor_celda(fila,col):
     if col not in fila or pd.isna(fila[col]):
@@ -17,16 +19,33 @@ def fila_a_txt(fila,etiquetas:list[str]):
     for e in etiquetas:
         v=valor_celda(fila,e)
         if v:
-            if e.lower()=='gratuito':
-                v_str = str(v).split('.')[0] 
-                if v_str=='0':
-                    lineas.append(f'{e}: no')
-                elif v_str=='1':
-                    lineas.append(f'{e}: si')
-                else:
-                    lineas.append(f'{e}: unknown')
-            else:
-                lineas.append(f'{e}: {v}')
+            match e.lower():
+                case 'estado':
+                    match v:
+                        case 'A':
+                            vInterpretado='Reprogramado'
+                        case 'C':
+                            vInterpretado='Comite disciplinario'
+                        case 'F':
+                            vInterpretado='Finalizado'
+                        case 'S':
+                            vInterpretado='Suspendido'
+                        case 'N':
+                            vInterpretado='No presentado'
+                        case 'O':
+                            vInterpretado='Aplazado organizacion'
+                        case 'R':
+                            vInterpretado='Resultado desconocido'
+                        case _:
+                            vInterpretado='Desconocido'
+                case 'sistema_competicion':
+                    try:
+                        vInterpretado=str(v)
+                    except Exception:
+                        vInterpretado='Error'
+                case _:
+                    vInterpretado=v
+            lineas.append(f'{e}: {vInterpretado}')
     return '\n'.join(lineas)
 
 def nombre(file:Path)->str:
@@ -34,9 +53,10 @@ def nombre(file:Path)->str:
     palabras=[p for p in division if not p.isdigit() and p.lower() not in {'csv','txt','pdf','xlsx'}]
     return '-'.join(palabras)
 
-def corpus(data:Path)->list[Document]:
+def corpus()->tuple[list[Document],list[Document],list[Document]]:
     docs:list[Document]=[]
-    for file in data.iterdir():
+    maxLen=0
+    for file in DATA_DIR.iterdir():
         if not file.is_file():
             continue
         antes=len(docs)
@@ -62,15 +82,19 @@ def corpus(data:Path)->list[Document]:
                                 metadata=metadata
                                 )
                             )
+                        textoLen=len(texto)
+                        maxLen=textoLen if textoLen>maxLen else maxLen
             case '.csv':
                 csv_df=pd.read_csv(file,sep=';',encoding='latin-1')
                 etiquetas=csv_df.columns.tolist()
                 for _, fila in csv_df.iterrows():
                     texto=fila_a_txt(fila,etiquetas)
+                    tipo=nombre(file)
+                    texto+=f'\nTIPO: {tipo}'
                     if texto:
                         metadata={
                             'source':str(file),
-                            'tipo': nombre(file)
+                            'tipo': tipo
                         }
                         docs.append(
                             Document(
@@ -78,8 +102,22 @@ def corpus(data:Path)->list[Document]:
                                 metadata=metadata
                             )
                         )
+                        textoLen=len(texto)
+                        maxLen=textoLen if textoLen>maxLen else maxLen
         print (f' {file.name}: +{len(docs) - antes} documento(s)')
-    return docs
+    limpios = []
+    for d in docs:
+        texto_limpio = normalizar(d.page_content)
+        if not texto_limpio:
+            continue  
+        limpios.append(
+            Document(
+                page_content=texto_limpio,
+                metadata=dict(d.metadata), 
+            )
+        )
+    chunks=create_chunks(docs=limpios,c_size=maxLen)
+    return docs,limpios,chunks
 
 def normalizar(text:str)->str:
     t=text.replace('\r\n','\n').replace('\r','\n')
