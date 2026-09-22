@@ -1,7 +1,10 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from config import CHUNK_OVERLAP,CHUNK_SIZE
 
-def create_chunks(*,docs:list[Document],c_size:int,c_overlap:int)->list[Document]:
+def create_chunks(*,docs:list[Document],c_size:int|None=CHUNK_SIZE,c_overlap:int=CHUNK_OVERLAP)->list[Document]:
+    if c_size is None:
+        c_size=CHUNK_SIZE
     splitter=RecursiveCharacterTextSplitter(
         chunk_size=c_size,
         chunk_overlap=c_overlap

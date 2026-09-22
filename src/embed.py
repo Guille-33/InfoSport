@@ -4,9 +4,10 @@ from pathlib import Path
 
 from google import genai
 from google.genai import types
+from src.chunk import create_chunks
+from langchain_core.documents import Document
 
 from config import (
-    CHUNKS_JSON,
     EMBED_BATCH_SIZE,
     EMBEDDING_MODEL,
     EMBEDDINGS_JSON,
@@ -21,26 +22,16 @@ def _extraer_vector(embedding_obj) -> list[float]:
     return list(embedding_obj)
 
 
-def cargar_chunks_json() -> list[dict]:
-    """Lee el archivo de chunks que generamos en la fase anterior."""
-    if not CHUNKS_JSON.exists():
-        raise FileNotFoundError(
-            f"No encuentro el archivo {CHUNKS_JSON}. Ejecuta primero la ingesta."
-        )
-    data = json.loads(CHUNKS_JSON.read_text(encoding="utf-8"))
-    return data.get("chunks", [])
-
-
 def embeddear_textos(client: genai.Client, textos: list[str]) -> list[list[float]]:
     """Manda los textos a Gemini en pequeños lotes para que nos devuelva sus vectores."""
     if not textos:
         return []
 
     vectores = []
-
-    for inicio in range(0, len(textos), EMBED_BATCH_SIZE):
-        lote = textos[inicio : inicio + EMBED_BATCH_SIZE]
-
+    textosLen=len(textos)
+    for inicio in range(0, textosLen, EMBED_BATCH_SIZE):
+        siguiente=min(inicio+EMBED_BATCH_SIZE,textosLen)
+        lote = textos[inicio : siguiente]
         # Preparo el formato que pide Google GenAI
         contents = [types.Content(parts=[types.Part(text=t)]) for t in lote]
 
@@ -55,19 +46,20 @@ def embeddear_textos(client: genai.Client, textos: list[str]) -> list[list[float
     return vectores
 
 
-def ejecutar_embeddings() -> tuple[list[dict], Path]:
+def ejecutar_embeddings(*,client:genai.Client,docs:list[Document],max_embed:int|None=MAX_CHUNKS_EMBED,c_size:int|None) -> tuple[list[dict], Path]:
     """Función principal que coordina la creación de los embeddings y los guarda en un JSON."""
     # Conecto con el cliente de Gemini (es necesario la API key en el .env)
-    client = genai.Client()
 
-    chunks = cargar_chunks_json()
+    chunks = create_chunks(docs=docs,c_size=c_size)
     total_disponibles = len(chunks)
 
     # Si puse un límite en config, recortamos la lista para probar rápido
-    if MAX_CHUNKS_EMBED is not None:
-        chunks = chunks[:MAX_CHUNKS_EMBED]
+    if max_embed is not None:
+        subset = chunks[:max_embed]
+    else:
+        subset=chunks
 
-    textos = [c["text"] for c in chunks]
+    textos = [c.page_content for c in subset]
 
     print(f"Generando embeddings para {len(textos)} trozos de texto...")
     inicio = time.perf_counter()
@@ -77,12 +69,12 @@ def ejecutar_embeddings() -> tuple[list[dict], Path]:
 
     # Junto cada texto con su vector numérico y su metadato correspondiente
     items = []
-    for chunk, vector in zip(chunks, vectores):
+    for chunk, vector in zip(subset, vectores):
         items.append(
             {
-                "text": chunk["text"],
+                "text": chunk.page_content,
                 "vector": vector,
-                "metadata": chunk.get("metadata", {}),
+                "metadata": dict(chunk.metadata),
             }
         )
 
