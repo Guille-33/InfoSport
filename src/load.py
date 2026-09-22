@@ -1,88 +1,82 @@
+
 from pathlib import Path
-from langchain_core.documents import Document
-from langchain_community.document_loaders import TextLoader,PyPDFLoader
 import pandas as pd
-import re 
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_core.documents import Document
 
-def valor_celda(fila,col):
-    if col not in fila or pd.isna(fila[col]):
-        return None
-    valor=str(fila[col]).strip()
-    return valor if valor else None
+from config import DATA_DIR, CSV_INSTALACIONES, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV
 
-def fila_a_txt(fila,etiquetas:list[str]):
-    if valor_celda(fila,etiquetas[0]) is None:
-        return None
-    lineas=[]
-    for e in etiquetas:
-        v=valor_celda(fila,e)
-        if v:
-            if e.lower()=='gratuito':
-                v_str = str(v).split('.')[0] 
-                if v_str=='0':
-                    lineas.append(f'{e}: no')
-                elif v_str=='1':
-                    lineas.append(f'{e}: si')
-                else:
-                    lineas.append(f'{e}: unknown')
-            else:
-                lineas.append(f'{e}: {v}')
-    return '\n'.join(lineas)
 
-def nombre(file:Path)->str:
-    division=file.stem.split('-')
-    palabras=[p for p in division if not p.isdigit() and p.lower() not in {'csv','txt','pdf','xlsx'}]
-    return '-'.join(palabras)
+def fila_deporte_a_texto(fila) -> str:
+    """Convierte una fila del CSV de polideportivos en un texto plano fácil de leer."""
+    # Cojo los campos más típicos que suelen venir en un CSV municipal básico
+    nombre = str(fila.get("nombre", fila.get("NOMBRE", "Instalación deportiva")))
+    direc = str(fila.get("direccion", fila.get("DIRECCION", "Dirección no especificada")))
+    barrio = str(fila.get("barrio", fila.get("BARRIO", "")))
+    
+    # Montando un texto simple con la info
+    texto = f"Instalación municipal: {nombre}. Dirección: {direc}."
+    if barrio:
+        texto += f" Barrio o zona: {barrio}."
+        
+    return texto
 
-def corpus(data:Path)->list[Document]:
-    docs:list[Document]=[]
-    for file in data.iterdir():
-        if not file.is_file():
+
+def cargar_csv_deportes(ruta: Path) -> list[Document]:
+    """Lee el CSV de instalaciones y crea un Document de LangChain por cada fila."""
+    df = pd.read_csv(ruta, sep=";", encoding="utf-8")
+    documentos = []
+
+    for _, fila in df.iterrows():
+        texto = fila_deporte_a_texto(fila)
+        
+        # para saber de qué archivo viene
+        metadata = {
+            "source": str(ruta.name),
+            "tipo": "csv_instalacion"
+        }
+        
+        documentos.append(Document(page_content=texto, metadata=metadata))
+
+    return documentos
+
+
+def cargar_archivo(ruta: Path) -> list[Document]:
+    """Selecciona cómo abrir el archivo según su extensión."""
+    sufijo = ruta.suffix.lower()
+
+    # Si es PDF uso PyPDFLoader
+    if sufijo in EXTENSIONES_PDF:
+        return PyPDFLoader(str(ruta)).load()
+
+    # Si es texto o markdown
+    if sufijo in EXTENSIONES_TEXTO:
+        return TextLoader(str(ruta), encoding="utf-8").load()
+
+    # Si es el CSV de deportes
+    if sufijo in EXTENSIONES_CSV:
+        return cargar_csv_deportes(ruta)
+
+    return []
+
+
+def cargar_documentos() -> list[Document]:
+    """Recorre la carpeta data/ y carga todos los archivos soportados."""
+    if not DATA_DIR.exists():
+        raise FileNotFoundError(f"No encuentro la carpeta data en: {DATA_DIR}")
+
+    documentos = []
+
+    # Recorro todos los ficheros de la carpeta data
+    for ruta in sorted(DATA_DIR.rglob("*")):
+        if not ruta.is_file():
             continue
-        antes=len(docs)
-        suf=file.suffix.lower()
-        match suf:
-            case '.txt'|'.md':
-                docs.extend(TextLoader(str(file),encoding='utf-8').load())
-            case '.pdf':
-                docs.extend(PyPDFLoader(str(file)).load())
-            case '.xlsx':
-                excel_df = pd.read_excel(file)
-                etiquetas = excel_df.columns.tolist()
-                for _, fila in excel_df.iterrows():
-                    texto = fila_a_txt(fila, etiquetas)
-                    if texto:
-                        metadata = {
-                            'source':str(file),
-                            'tipo': nombre(file)
-                            }
-                        docs.append(
-                            Document(
-                                page_content=texto,
-                                metadata=metadata
-                                )
-                            )
-            case '.csv':
-                csv_df=pd.read_csv(file,sep=';',encoding='latin-1')
-                etiquetas=csv_df.columns.tolist()
-                for _, fila in csv_df.iterrows():
-                    texto=fila_a_txt(fila,etiquetas)
-                    if texto:
-                        metadata={
-                            'source':str(file),
-                            'tipo': nombre(file)
-                        }
-                        docs.append(
-                            Document(
-                                page_content=texto,
-                                metadata=metadata
-                            )
-                        )
-        print (f' {file.name}: +{len(docs) - antes} documento(s)')
-    return docs
+        if ruta.name == "README.md":
+            continue
 
-def normalizar(text:str)->str:
-    t=text.replace('\r\n','\n').replace('\r','\n')
-    t=re.sub(r'\n{3.}','\n\n',t)
-    t=re.sub(r'[ \t]+',' ',t)
-    return '\n'.join(linea.strip() for linea in t.split('\n')).strip()
+        docs = cargar_archivo(ruta)
+        if docs:
+            print(f"Cargado correctamente: {ruta.name} ({len(docs)} elementos)")
+            documentos.extend(docs)
+
+    return documentos
