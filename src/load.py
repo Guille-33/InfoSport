@@ -1,10 +1,10 @@
+
 from pathlib import Path
-from langchain_core.documents import Document
-from langchain_community.document_loaders import TextLoader,PyPDFLoader
 import pandas as pd
-import re 
-from src.chunk import create_chunks
-from config import DATA_DIR
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_core.documents import Document
+
+from config import DATA_DIR, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV
 
 def valor_celda(fila,col):
     if col not in fila or pd.isna(fila[col]):
@@ -12,7 +12,7 @@ def valor_celda(fila,col):
     valor=str(fila[col]).strip()
     return valor if valor else None
 
-def fila_a_txt(fila,etiquetas:list[str]):
+def fila_a_texto(fila,etiquetas:list[str])->str:
     if valor_celda(fila,etiquetas[0]) is None:
         return None
     lineas=[]
@@ -53,74 +53,70 @@ def nombre(file:Path)->str:
     palabras=[p for p in division if not p.isdigit() and p.lower() not in {'csv','txt','pdf','xlsx'}]
     return '-'.join(palabras)
 
-def corpus()->tuple[list[Document],list[Document],list[Document]]:
-    docs:list[Document]=[]
-    maxLen=0
-    for file in DATA_DIR.iterdir():
-        if not file.is_file():
-            continue
-        antes=len(docs)
-        suf=file.suffix.lower()
-        match suf:
-            case '.txt'|'.md':
-                docs.extend(TextLoader(str(file),encoding='utf-8').load())
-            case '.pdf':
-                docs.extend(PyPDFLoader(str(file)).load())
-            case '.xlsx':
-                excel_df = pd.read_excel(file)
-                etiquetas = excel_df.columns.tolist()
-                for _, fila in excel_df.iterrows():
-                    texto = fila_a_txt(fila, etiquetas)
-                    if texto:
-                        metadata = {
-                            'source':str(file),
-                            'tipo': nombre(file)
-                            }
-                        docs.append(
-                            Document(
-                                page_content=texto,
-                                metadata=metadata
-                                )
-                            )
-                        textoLen=len(texto)
-                        maxLen=textoLen if textoLen>maxLen else maxLen
-            case '.csv':
-                csv_df=pd.read_csv(file,sep=';',encoding='latin-1')
-                etiquetas=csv_df.columns.tolist()
-                for _, fila in csv_df.iterrows():
-                    texto=fila_a_txt(fila,etiquetas)
-                    tipo=nombre(file)
-                    texto+=f'\nTIPO: {tipo}'
-                    if texto:
-                        metadata={
-                            'source':str(file),
-                            'tipo': tipo
-                        }
-                        docs.append(
-                            Document(
-                                page_content=texto,
-                                metadata=metadata
-                            )
-                        )
-                        textoLen=len(texto)
-                        maxLen=textoLen if textoLen>maxLen else maxLen
-        print (f' {file.name}: +{len(docs) - antes} documento(s)')
-    limpios = []
-    for d in docs:
-        texto_limpio = normalizar(d.page_content)
-        if not texto_limpio:
-            continue  
-        limpios.append(
-            Document(
-                page_content=texto_limpio,
-                metadata=dict(d.metadata), 
-            )
-        )
-    chunks=create_chunks(docs=limpios,c_size=maxLen)
-    return docs,limpios,chunks
+def cargar_csv_deportes(ruta: Path,maxLen:int|None) -> list[Document]:
+    """Lee el CSV de instalaciones y crea un Document de LangChain por cada fila."""
+    df = pd.read_csv(ruta, sep=";", encoding="latin-1")
+    etiquetas=df.columns.tolist()
+    documentos = []
 
-def normalizar(text:str)->str:
-    t=text.replace('\r\n','\n').replace('\r','\n')
-    t=re.sub(r'\n{3.}','\n\n',t)
-    t=re.sub(r'[ \t]+',' ',t)
-    return '\n'.join(linea.strip() for linea in t.split('\n')).strip()
+    for _, fila in df.iterrows():
+        texto = fila_a_texto(fila,etiquetas)
+        tipo=nombre(ruta)
+        texto+=f'\nTIPO: {tipo}'
+        # para saber de qué archivo viene
+        metadata = {
+            "source": str(ruta.name),
+            "tipo": tipo
+        }
+        textoLen=len(texto)
+        if not maxLen is None:
+            maxLen=textoLen if textoLen>maxLen else maxLen
+        else:
+            maxLen=textoLen
+        documentos.append(Document(page_content=texto, metadata=metadata))
+
+    return documentos,maxLen
+
+
+def cargar_archivo(ruta: Path,maxLen:int|None) -> tuple[list[Document],int|None]:
+    """Selecciona cómo abrir el archivo según su extensión."""
+    sufijo = ruta.suffix.lower()
+
+    # Si es PDF uso PyPDFLoader
+    if sufijo in EXTENSIONES_PDF:
+        return PyPDFLoader(str(ruta)).load(),None
+
+    # Si es texto o markdown
+    if sufijo in EXTENSIONES_TEXTO:
+        return TextLoader(str(ruta), encoding="utf-8").load(),None
+
+    # Si es el CSV de deportes
+    if sufijo in EXTENSIONES_CSV:
+        return cargar_csv_deportes(ruta,maxLen)
+
+    return []
+
+
+def cargar_documentos() -> tuple[list[Document],int|None]:
+    """Recorre la carpeta data/ y carga todos los archivos soportados."""
+    maxLen=None
+    if not DATA_DIR.exists():
+        raise FileNotFoundError(f"No encuentro la carpeta data en: {DATA_DIR}")
+
+    documentos = []
+
+    # Recorro todos los ficheros de la carpeta data
+    for ruta in sorted(DATA_DIR.iterdir()):
+        if not ruta.is_file():
+            continue
+        if ruta.name == "README.md":
+            continue
+
+        docs,newMax= cargar_archivo(ruta,maxLen)
+        if not newMax is None:
+            maxLen=max(maxLen,newMax) if not maxLen is None else newMax
+        if docs:
+            print(f"Cargado correctamente: {ruta.name} ({len(docs)} elementos)")
+            documentos.extend(docs)
+
+    return documentos,maxLen

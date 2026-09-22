@@ -1,27 +1,4 @@
-# Rutas
 from pathlib import Path
-PROYECT_DIR=Path(__file__).resolve().parent
-DATA_DIR=PROYECT_DIR / 'data'
-ENTREGABLES_DIR=PROYECT_DIR / 'entregables'
-QUERIES_DIR=PROYECT_DIR / 'queries'
-SRC_DIR=PROYECT_DIR / 'src'
-OUTPUT_DIR=PROYECT_DIR / 'output'
-CHROMA_DIR=OUTPUT_DIR / 'chroma_db'
-JSON=OUTPUT_DIR / "embeddings.json"
-EXPORT_DIR=OUTPUT_DIR/ 'export'
-
-# Constantes
-TOP_K=3
-CHUNK_SIZE=800
-CHUNK_OVERLAP=100
-MAX_GRUPO=175
-MAX_GRUPO_CHROMA=500
-MAX_CHUNK=100000
-EMBEDDING_MODEL='gemini-embedding-001'
-COLLECTION_NAME='InfoSport'
-GEMINI_MODEL="gemini-3.1-flash-lite"
-TEMPERATURE=0.2
-
 #Instrucciones
 RAG_BEHAVIOUR='''Eres un asistente sobre la competicion y los partidos de Madrid.
 
@@ -36,3 +13,36 @@ Reglas:
   }
 - Si el contexto no basta, hay_evidencia=False y explica la abstención en respuesta.
 - fuentes_citadas: nombres de archivo que aparecen en el contexto (si los hay).'''
+
+#Configuración del Chunking
+CHUNK_SIZE = 800
+CHUNK_OVERLAP = 100
+
+#Rutas de carpetas
+PROYECT_DIR=Path(__file__).resolve().parent
+DATA_DIR=PROYECT_DIR / 'data'
+ENTREGABLES_DIR=PROYECT_DIR / 'entregables'
+QUERIES_DIR=PROYECT_DIR / 'queries'
+OUTPUT_DIR=PROYECT_DIR / 'output'
+CHROMA_DIR=OUTPUT_DIR / 'chroma_db'
+EMBEDDINGS_JSON = OUTPUT_DIR / "embeddings.json"
+EXPORT_DIR=OUTPUT_DIR/ 'export'
+
+# Configuración de Embeddings
+EMBEDDING_MODEL = "gemini-embedding-001"
+MAX_CHUNKS_EMBED = 50  # Le pongo un límite para no gastar ni tardar mucho probando
+EMBED_BATCH_SIZE = 200
+
+# Archivos del corpus de deportes
+
+EXTENSIONES_TEXTO = {".txt", ".md"}
+EXTENSIONES_PDF = {".pdf"}
+EXTENSIONES_CSV = {".csv"}
+
+# Configuracion retrieval
+
+TOP_K=3
+MAX_GRUPO_CHROMA=500
+COLLECTION_NAME='InfoSport'
+GEMINI_MODEL="gemini-3.1-flash-lite"
+TEMPERATURE=0.2
