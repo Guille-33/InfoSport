@@ -1,4 +1,5 @@
 from pathlib import Path
+
 #Instrucciones
 RAG_BEHAVIOUR='''Eres un asistente sobre la competicion y los partidos de Madrid.
 
