@@ -1,5 +1,6 @@
 import json
 import time
+import joblib
 from pathlib import Path
 
 from google import genai
@@ -12,6 +13,7 @@ from config import (
     EMBEDDING_MODEL,
     EMBEDDINGS_JSON,
     MAX_CHUNKS_EMBED,
+    EXPORT_DIR
 )
 
 
@@ -42,9 +44,14 @@ def embeddear_textos(client: genai.Client, textos: list[str]) -> list[list[float
 
         lote_vectores = [_extraer_vector(emb) for emb in result.embeddings]
         vectores.extend(lote_vectores)
+        print(f'{len(vectores)}/{textosLen}')
 
     return vectores
 
+def embed_question(client:genai.Client,question:str)->list[float]:
+    contents=[types.Content(parts=[types.Part(text=question.strip())])]
+    response=client.models.embed_content(model=EMBEDDING_MODEL,contents=contents)
+    return list(response.embeddings[0].values)
 
 def ejecutar_embeddings(*,client:genai.Client,docs:list[Document],max_embed:int|None=MAX_CHUNKS_EMBED,c_size:int|None) -> tuple[list[dict], Path]:
     """Función principal que coordina la creación de los embeddings y los guarda en un JSON."""
@@ -93,5 +100,13 @@ def ejecutar_embeddings(*,client:genai.Client,docs:list[Document],max_embed:int|
         encoding="utf-8",
     )
     print(f"Guardado archivo de embeddings en: {EMBEDDINGS_JSON}")
+    try:
+        EXPORT_DIR.mkdir(parents=True,exist_ok=True)
+        numeroArchivo=1+sum(1 for x in EXPORT_DIR.iterdir() if x.is_file())
+        nombreArchivo=f'embedding_chunk_{numeroArchivo}'
+        archivo_dir=EXPORT_DIR / nombreArchivo
+        joblib.dump(items,archivo_dir,compress=3)
+    except Exception as e:
+        print ('Error:',e)
 
     return items, EMBEDDINGS_JSON
