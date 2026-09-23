@@ -1,8 +1,10 @@
+
 from pathlib import Path
-from langchain_core.documents import Document
-from langchain_community.document_loaders import TextLoader,PyPDFLoader
 import pandas as pd
-import re 
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_core.documents import Document
+
+from config import DATA_DIR, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV
 
 def valor_celda(fila,col):
     if col not in fila or pd.isna(fila[col]):
@@ -10,23 +12,40 @@ def valor_celda(fila,col):
     valor=str(fila[col]).strip()
     return valor if valor else None
 
-def fila_a_txt(fila,etiquetas:list[str]):
+def fila_a_texto(fila,etiquetas:list[str])->str:
     if valor_celda(fila,etiquetas[0]) is None:
         return None
     lineas=[]
     for e in etiquetas:
         v=valor_celda(fila,e)
         if v:
-            if e.lower()=='gratuito':
-                v_str = str(v).split('.')[0] 
-                if v_str=='0':
-                    lineas.append(f'{e}: no')
-                elif v_str=='1':
-                    lineas.append(f'{e}: si')
-                else:
-                    lineas.append(f'{e}: unknown')
-            else:
-                lineas.append(f'{e}: {v}')
+            match e.lower():
+                case 'estado':
+                    match v:
+                        case 'A':
+                            vInterpretado='Reprogramado'
+                        case 'C':
+                            vInterpretado='Comite disciplinario'
+                        case 'F':
+                            vInterpretado='Finalizado'
+                        case 'S':
+                            vInterpretado='Suspendido'
+                        case 'N':
+                            vInterpretado='No presentado'
+                        case 'O':
+                            vInterpretado='Aplazado organizacion'
+                        case 'R':
+                            vInterpretado='Resultado desconocido'
+                        case _:
+                            vInterpretado='Desconocido'
+                case 'sistema_competicion':
+                    try:
+                        vInterpretado=str(v)
+                    except Exception:
+                        vInterpretado='Error'
+                case _:
+                    vInterpretado=v
+            lineas.append(f'{e}: {vInterpretado}')
     return '\n'.join(lineas)
 
 def nombre(file:Path)->str:
@@ -34,55 +53,70 @@ def nombre(file:Path)->str:
     palabras=[p for p in division if not p.isdigit() and p.lower() not in {'csv','txt','pdf','xlsx'}]
     return '-'.join(palabras)
 
-def corpus(data:Path)->list[Document]:
-    docs:list[Document]=[]
-    for file in data.iterdir():
-        if not file.is_file():
-            continue
-        antes=len(docs)
-        suf=file.suffix.lower()
-        match suf:
-            case '.txt'|'.md':
-                docs.extend(TextLoader(str(file),encoding='utf-8').load())
-            case '.pdf':
-                docs.extend(PyPDFLoader(str(file)).load())
-            case '.xlsx':
-                excel_df = pd.read_excel(file)
-                etiquetas = excel_df.columns.tolist()
-                for _, fila in excel_df.iterrows():
-                    texto = fila_a_txt(fila, etiquetas)
-                    if texto:
-                        metadata = {
-                            'source':str(file),
-                            'tipo': nombre(file)
-                            }
-                        docs.append(
-                            Document(
-                                page_content=texto,
-                                metadata=metadata
-                                )
-                            )
-            case '.csv':
-                csv_df=pd.read_csv(file,sep=';',encoding='latin-1')
-                etiquetas=csv_df.columns.tolist()
-                for _, fila in csv_df.iterrows():
-                    texto=fila_a_txt(fila,etiquetas)
-                    if texto:
-                        metadata={
-                            'source':str(file),
-                            'tipo': nombre(file)
-                        }
-                        docs.append(
-                            Document(
-                                page_content=texto,
-                                metadata=metadata
-                            )
-                        )
-        print (f' {file.name}: +{len(docs) - antes} documento(s)')
-    return docs
+def cargar_csv_deportes(ruta: Path,maxLen:int|None) -> list[Document]:
+    """Lee el CSV de instalaciones y crea un Document de LangChain por cada fila."""
+    df = pd.read_csv(ruta, sep=";", encoding="latin-1")
+    etiquetas=df.columns.tolist()
+    documentos = []
 
-def normalizar(text:str)->str:
-    t=text.replace('\r\n','\n').replace('\r','\n')
-    t=re.sub(r'\n{3.}','\n\n',t)
-    t=re.sub(r'[ \t]+',' ',t)
-    return '\n'.join(linea.strip() for linea in t.split('\n')).strip()
+    for _, fila in df.iterrows():
+        texto = fila_a_texto(fila,etiquetas)
+        tipo=nombre(ruta)
+        texto+=f'\nTIPO: {tipo}'
+        # para saber de qué archivo viene
+        metadata = {
+            "source": str(ruta.name),
+            "tipo": tipo
+        }
+        textoLen=len(texto)
+        if not maxLen is None:
+            maxLen=textoLen if textoLen>maxLen else maxLen
+        else:
+            maxLen=textoLen
+        documentos.append(Document(page_content=texto, metadata=metadata))
+
+    return documentos,maxLen
+
+
+def cargar_archivo(ruta: Path,maxLen:int|None) -> tuple[list[Document],int|None]:
+    """Selecciona cómo abrir el archivo según su extensión."""
+    sufijo = ruta.suffix.lower()
+
+    # Si es PDF uso PyPDFLoader
+    if sufijo in EXTENSIONES_PDF:
+        return PyPDFLoader(str(ruta)).load(),None
+
+    # Si es texto o markdown
+    if sufijo in EXTENSIONES_TEXTO:
+        return TextLoader(str(ruta), encoding="utf-8").load(),None
+
+    # Si es el CSV de deportes
+    if sufijo in EXTENSIONES_CSV:
+        return cargar_csv_deportes(ruta,maxLen)
+
+    return []
+
+
+def cargar_documentos() -> tuple[list[Document],int|None]:
+    """Recorre la carpeta data/ y carga todos los archivos soportados."""
+    maxLen=None
+    if not DATA_DIR.exists():
+        raise FileNotFoundError(f"No encuentro la carpeta data en: {DATA_DIR}")
+
+    documentos = []
+
+    # Recorro todos los ficheros de la carpeta data
+    for ruta in sorted(DATA_DIR.iterdir()):
+        if not ruta.is_file():
+            continue
+        if ruta.name == "README.md":
+            continue
+
+        docs,newMax= cargar_archivo(ruta,maxLen)
+        if not newMax is None:
+            maxLen=max(maxLen,newMax) if not maxLen is None else newMax
+        if docs:
+            print(f"Cargado correctamente: {ruta.name} ({len(docs)} elementos)")
+            documentos.extend(docs)
+
+    return documentos,maxLen
