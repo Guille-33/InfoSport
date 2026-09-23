@@ -94,7 +94,7 @@ def ejecutar_embeddings(*,max_embed:int|None=MAX_CHUNKS_EMBED,create:bool) -> tu
     payload = {
         "embedding_model": EMBEDDING_MODEL,
         "total": len(items),
-        "dimensions": len(vectores[0]) if vectores else 0,
+        "dimensions": len(items[0]['vector']) if items[0]['vector'] else 0,
         "items": items,
     }
 
