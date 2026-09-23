@@ -49,9 +49,10 @@ La respuesta no se ha generado correctamente, si el error persiste contacte con 
         "error": error,
     }
 
-def responder(*,pregunta:str,top_k:int=TOP_K)->dict:
+def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
+    if top_k is None:
+        top_k=TOP_K
     client=create_client()
-    collection=create_chroma(create=False)
     question=(pregunta or "").strip()
     if not question:
         return{
@@ -61,7 +62,7 @@ def responder(*,pregunta:str,top_k:int=TOP_K)->dict:
             "fuentes": [],
             "error": "La pregunta no puede estar vacía.",
         }
-    resultados=search_k(client=client,collection=collection,pregunta=question,top_k=top_k)
+    resultados=search_k(pregunta=question,top_k=top_k)
     context=generar_context(resultados=resultados)
     if context == "Fuera de scope":
         return {

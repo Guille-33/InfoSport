@@ -11,7 +11,7 @@ from src.google_authen import create_client
 def search_k(*,pregunta:str,top_k:int|None):
     if top_k is None:
         top_k=TOP_K
-    client=create_client
+    client=create_client()
     collection=create_chroma(create=False)
     vecPregunta=embed_question(client=client,question=pregunta)
     totalCollection=collection.count()

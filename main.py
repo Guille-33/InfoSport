@@ -19,11 +19,11 @@ def _cmd_index(create: bool=False) -> None:
 
 def _cmd_query(pregunta: str, top_k: int | None) -> None:   
     resultados = search_k(pregunta=pregunta, top_k=top_k)
-    generar_context(resultados=resultados)
+    print(generar_context(resultados=resultados))
 
 
 def _cmd_ask(pregunta: str, top_k: int | None) -> None:
-    resultado = responder(pregunta, top_k=top_k)
+    resultado = responder(pregunta=pregunta, top_k=top_k)
     print(json.dumps(
         {
             "respuesta": resultado.get("respuesta"),
