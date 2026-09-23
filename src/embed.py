@@ -49,10 +49,10 @@ def embeddear_textos(client: genai.Client, textos: list[str]) -> list[list[float
 
     return vectores
 
-def embed_question(client:genai.Client,question:str)->list[float]:
+def embed_question(client:genai.Client,question:str)->tuple[list[float],str]:
     contents=[types.Content(parts=[types.Part(text=question.strip())])]
     response=client.models.embed_content(model=EMBEDDING_MODEL,contents=contents)
-    return list(response.embeddings[0].values)
+    return list(response.embeddings[0].values),EMBEDDING_MODEL
 
 def ejecutar_embeddings(*,max_embed:int|None=MAX_CHUNKS_EMBED,create:bool) -> tuple[list[dict], Path]:
     """Función principal que coordina la creación de los embeddings y los guarda en un JSON."""

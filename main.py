@@ -18,7 +18,7 @@ def _cmd_index(create: bool=False) -> None:
 
 
 def _cmd_query(pregunta: str, top_k: int | None) -> None:   
-    resultados = search_k(pregunta=pregunta, top_k=top_k)
+    resultados,modelo_embeddign = search_k(pregunta=pregunta, top_k=top_k)
     print(generar_context(resultados=resultados))
 
 

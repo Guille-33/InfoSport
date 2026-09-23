@@ -13,7 +13,7 @@ def search_k(*,pregunta:str,top_k:int|None):
         top_k=TOP_K
     client=create_client()
     collection=create_chroma(create=False)
-    vecPregunta=embed_question(client=client,question=pregunta)
+    vecPregunta,modelo_embedding=embed_question(client=client,question=pregunta)
     totalCollection=collection.count()
     try:
         resultados=collection.query(
@@ -21,7 +21,7 @@ def search_k(*,pregunta:str,top_k:int|None):
             n_results=min(totalCollection,top_k),
             include=['documents','metadatas','distances']
         )
-        return resultados
+        return resultados,modelo_embedding
     except Exception as e:
         print ('Error:',e)
         return None
@@ -63,10 +63,10 @@ def json_2_datos(respuesta:str)->dict:
         text=re.sub(r'\s*```$','',text)
     return json.loads(text)
 
-def generar_respuesta(client:genai.Client,prompt:str)->str:
+def generar_respuesta(client:genai.Client,prompt:str)->tuple[str,str]:
     modelResp=client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
             config={'temperature':TEMPERATURE}
         )
-    return (modelResp.text or '').strip()
+    return (modelResp.text or '').strip(),GEMINI_MODEL

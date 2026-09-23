@@ -29,6 +29,7 @@ CHROMA_DIR=OUTPUT_DIR / 'chroma_db'
 EMBEDDINGS_JSON = OUTPUT_DIR / "embeddings.json"
 EXPORT_DIR=OUTPUT_DIR/ 'export'
 CHUNKS_JSON=OUTPUT_DIR/ 'chunks.json'
+LOG_FILE_JSON = OUTPUT_DIR/"rag_metrics_log.json"
 
 # Configuración de Embeddings
 EMBEDDING_MODEL = "gemini-embedding-001"

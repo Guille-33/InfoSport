@@ -1,9 +1,9 @@
 from src.retrieve import search_k,json_2_datos,generar_context,generar_respuesta,build_prompt
-import chromadb
 import json
 from src.google_authen import create_client
-from src.index import create_chroma
+from src.logging_utils import registrar_consulta_json
 from config import TOP_K
+import time
 
 def resp_ok(datos:dict,context,resultados)->dict:
     evidencia=datos.get('hay_evidencia',False)
@@ -50,6 +50,7 @@ La respuesta no se ha generado correctamente, si el error persiste contacte con 
     }
 
 def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
+    t_inicio=time.time()
     if top_k is None:
         top_k=TOP_K
     client=create_client()
@@ -62,7 +63,7 @@ def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
             "fuentes": [],
             "error": "La pregunta no puede estar vacía.",
         }
-    resultados=search_k(pregunta=question,top_k=top_k)
+    resultados,modelo_embedding=search_k(pregunta=question,top_k=top_k)
     context=generar_context(resultados=resultados)
     if context == "Fuera de scope":
         return {
@@ -73,11 +74,16 @@ def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
             "error": "No se recuperó contexto. Revisa el índice.",
         }
     prompt=build_prompt(context=context,pregunta=question)
-    modelResp=generar_respuesta(client=client,prompt=prompt)
+    modelResp,modelo=generar_respuesta(client=client,prompt=prompt)
     try:
         datos=json_2_datos(modelResp)
+        se_abstuvo=not datos.get('hay_evidencia',False)
+        num_chunks=len(resultados['documents'])
+        t_ejec=time.time()-t_inicio
+        registrar_consulta_json(pregunta=pregunta,k=top_k,num_chunks=num_chunks,tiempo_ejecucion=t_ejec,modelo=modelo,modelo_embedding=modelo_embedding,se_abstuvo=se_abstuvo)
         return resp_ok(datos=datos,context=context,resultados=resultados)
     except json.JSONDecodeError as e:
         error=str(e)
         return resp_error(respuesta=modelResp,error=error)
+    
     
