@@ -33,7 +33,11 @@ def index_batch(items:list[Document]):
         siguiente=min(i+MAX_GRUPO_CHROMA,LenSet)
         yield items[i:siguiente]
 
-def index_2_chroma(items:list[Document],collection:chromadb.Collection):
+def index_2_chroma(items:list[Document])->chromadb.Collection:
+    try:
+        collection=create_chroma()
+    except Exception as e:
+        print('there was an error in chroma creation\n\nError:',str(e))
     for batch_items in index_batch(items=items):
         ids=[]
         embeddings=[]
@@ -56,3 +60,4 @@ def index_2_chroma(items:list[Document],collection:chromadb.Collection):
         )
 
         print (f'{collection.count()} indexado(s) en {collection.name}')
+        return collection
