@@ -28,6 +28,7 @@ OUTPUT_DIR=PROYECT_DIR / 'output'
 CHROMA_DIR=OUTPUT_DIR / 'chroma_db'
 EMBEDDINGS_JSON = OUTPUT_DIR / "embeddings.json"
 EXPORT_DIR=OUTPUT_DIR/ 'export'
+CHUNKS_JSON=OUTPUT_DIR/ 'chunks.json'
 
 # Configuración de Embeddings
 EMBEDDING_MODEL = "gemini-embedding-001"

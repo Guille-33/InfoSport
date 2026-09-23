@@ -3,8 +3,10 @@ from pathlib import Path
 import pandas as pd
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_core.documents import Document
+import re
+from src.chunk import create_chunks,chunks_json
 
-from config import DATA_DIR, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV
+from config import DATA_DIR, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV,CHUNKS_JSON
 
 def valor_celda(fila,col):
     if col not in fila or pd.isna(fila[col]):
@@ -120,3 +122,28 @@ def cargar_documentos() -> tuple[list[Document],int|None]:
             documentos.extend(docs)
 
     return documentos,maxLen
+
+def normalizar(text:str)->str:
+    t=text.replace('\r\n','\n').replace('\r','\n')
+    t=re.sub(r'\n{3.}','\n\n',t)
+    t=re.sub(r'[ \t]+',' ',t)
+    return '\n'.join(linea.strip() for linea in t.split('\n')).strip()
+
+def loading()->None:
+    docs,c_size=cargar_documentos()
+    clean_docs=[]
+    for d in docs:
+        text=normalizar(d.page_content)
+        if not text:
+            continue
+        clean_docs.append(
+            Document(
+                page_content=text,
+                metadata=dict(d.metadata)
+            )
+        )
+    print(f'\nDocumentos limpios: {len(clean_docs)}')
+    chunks=create_chunks(docs=clean_docs,c_size=c_size)
+    chunks_json(chunks=chunks,ruta=CHUNKS_JSON,c_size=c_size)
+    print(f'{len(chunks)} chunks guradados en {CHUNKS_JSON}')
+

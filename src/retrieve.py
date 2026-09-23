@@ -3,10 +3,16 @@ import chromadb
 from langchain_core.documents import Document
 from src.embed import embed_question
 from google import genai
-from config import RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE
+from config import RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE,TOP_K
 import re,json
+from src.index import create_chroma
+from src.google_authen import create_client
 
-def search_k(*,client:genai.Client,collection:chromadb.Collection,pregunta:str,top_k:int):
+def search_k(*,pregunta:str,top_k:int|None):
+    if top_k is None:
+        top_k=TOP_K
+    client=create_client
+    collection=create_chroma(create=False)
     vecPregunta=embed_question(client=client,question=pregunta)
     totalCollection=collection.count()
     try:
