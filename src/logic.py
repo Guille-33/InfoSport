@@ -1,7 +1,9 @@
 from src.retrieve import search_k,json_2_datos,generar_context,generar_respuesta,build_prompt
 import chromadb
 import json
-from google import genai
+from src.google_authen import create_client
+from src.index import create_chroma
+from config import TOP_K
 
 def resp_ok(datos:dict,context,resultados)->dict:
     evidencia=datos.get('hay_evidencia',False)
@@ -47,7 +49,9 @@ La respuesta no se ha generado correctamente, si el error persiste contacte con 
         "error": error,
     }
 
-def responder(*,pregunta:str,client:genai.Client,collection:chromadb.Collection)->dict:
+def responder(*,pregunta:str,top_k:int=TOP_K)->dict:
+    client=create_client()
+    collection=create_chroma(create=False)
     question=(pregunta or "").strip()
     if not question:
         return{
@@ -57,7 +61,7 @@ def responder(*,pregunta:str,client:genai.Client,collection:chromadb.Collection)
             "fuentes": [],
             "error": "La pregunta no puede estar vacía.",
         }
-    resultados=search_k(client=client,collection=collection,pregunta=question)
+    resultados=search_k(client=client,collection=collection,pregunta=question,top_k=top_k)
     context=generar_context(resultados=resultados)
     if context == "Fuera de scope":
         return {

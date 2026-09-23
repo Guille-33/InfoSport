@@ -3,19 +3,21 @@ from pathlib import Path
 from langchain_core.documents import Document
 from config import CHROMA_DIR,COLLECTION_NAME,MAX_GRUPO_CHROMA
 
-def create_chroma()->chromadb.Collection:
+def create_chroma(*,create:bool=True)->chromadb.Collection:
     client=chromadb.PersistentClient(path=str(CHROMA_DIR))
-    try:
-        client.delete_collection(COLLECTION_NAME)
-        print(f'{COLLECTION_NAME} previa eliminada')
-    except Exception:
-        print(f'no hay {COLLECTION_NAME} previa')
+    if create:
+        try:
+            client.delete_collection(COLLECTION_NAME)
+            print(f'{COLLECTION_NAME} previa eliminada')
+        except Exception:
+            print(f'no hay {COLLECTION_NAME} previa')
 
-    collection=client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"}
-    )
-
+        collection=client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"}
+        )
+    else:
+        collection=client.get_collection(COLLECTION_NAME)
     print(f'{collection.name} lista')
     return collection
 
@@ -35,7 +37,7 @@ def index_batch(items:list[Document]):
 
 def index_2_chroma(items:list[Document])->chromadb.Collection:
     try:
-        collection=create_chroma()
+        collection=create_chroma(create=True)
     except Exception as e:
         print('there was an error in chroma creation\n\nError:',str(e))
     for batch_items in index_batch(items=items):

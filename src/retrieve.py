@@ -3,16 +3,16 @@ import chromadb
 from langchain_core.documents import Document
 from src.embed import embed_question
 from google import genai
-from config import TOP_K,RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE
+from config import RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE
 import re,json
 
-def search_k(*,client:genai.Client,collection:chromadb.Collection,pregunta:str):
+def search_k(*,client:genai.Client,collection:chromadb.Collection,pregunta:str,top_k:int):
     vecPregunta=embed_question(client=client,question=pregunta)
     totalCollection=collection.count()
     try:
         resultados=collection.query(
             query_embeddings=vecPregunta,
-            n_results=min(totalCollection,TOP_K),
+            n_results=min(totalCollection,top_k),
             include=['documents','metadatas','distances']
         )
         return resultados
