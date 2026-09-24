@@ -67,14 +67,28 @@ project_break_rag/
 
 ---
 
-## 🛠️ Requisitos Técnicos e Instalación
+## 🛠️ Requisitos Técnicos, Google Cloud y Configuración de Vertex AI
 
-### Requisitos del Sistema
-* Python 3.10 o superior.
-* API Key del proveedor de LLM configurado (Stack por defecto optimizado para **Google Gemini** o **OpenAI** vía LangChain).
+A diferencia de los proveedores de consumo que utilizan una API Key simple, **InfoSport utiliza Vertex AI (Google Cloud Platform)** como motor de IA de nivel empresarial. Esto garantiza el cumplimiento normativo de datos, aislamiento y latencia óptima.
 
-### Guía de Despliegue Rápido:
-Sigue estos pasos detallados para inicializar el motor de datos desde cero:
+### 1. Requisitos Previos en Google Cloud Platform (GCP)
+Para que el motor RAG pueda conectarse con los modelos de Vertex AI (como `gemini-1.5-pro` o `text-embedding-004`), debes configurar tu infraestructura en GCP:
+
+1. **Crear un Proyecto:** Dispón de un proyecto activo en Google Cloud y copia tu `PROJECT_ID`.
+2. **Habilitar las APIs:** Dentro de la consola de GCP, busca y activa la **Vertex AI API**.
+3. **Crear una Cuenta de Servicio (Service Account):**
+   * Ve a *IAM & Admin* > *Service Accounts*.
+   * Crea una cuenta de servicio con los permisos mínimos necesarios: **Vertex AI User** (Usuario de Vertex AI).
+4. **Generar la Clave de Acceso (JSON Key):**
+   * Entra en la cuenta de servicio recién creada, ve a la pestaña **Keys** (Claves).
+   * Haz clic en *Add Key* > *Create new key* y selecciona el formato **JSON**.
+   * El archivo se descargará automáticamente a tu ordenador (ej. `gcp-credentials.json`).
+
+---
+
+### 2. Guía de Despliegue Local e Inyección de Credenciales
+
+Sigue estos pasos estrictos para inicializar el entorno e inyectar las credenciales de GCP sin comprometer la seguridad del repositorio:
 
 ```bash
 # 1. Clonar el repositorio
@@ -85,14 +99,28 @@ cd InfoSport
 python -m venv .venv
 source .venv/bin/activate  # En Windows usar: .venv\Scripts\activate
 
-# 3. Instalar las dependencias de producción
+# 3. Instalar las dependencias de producción (incluye google-cloud-aiplatform)
 pip install -r requirements.txt
 
-# 4. Configurar las credenciales de entorno de forma segura
+# 4. Configurar las variables de entorno empresariales
 cp .env.example .env
 ```
 
-> ⚠️ **IMPORTANTE:** Abre el archivo `.env` recién creado y añade tu API Key correspondiente (por ejemplo, `GEMINI_API_KEY=tu_clave_aqui`). El archivo `.env` está en el `.gitignore` y **nunca** debe subirse al repositorio público.
+#### 🛡️ Configuración de Archivos Seguros (`.env` y Credenciales)
+
+1. **Mover la clave de GCP:** Coge el archivo JSON descargado en el paso anterior (`gcp-credentials.json`), renombralo si lo deseas y colócalo en la **raíz de este proyecto**. 
+2. **Configurar el archivo `.env`:** Abre el archivo `.env` y rellena los parámetros con los datos de tu infraestructura:
+
+```env
+# Configuración del Entorno de Google Cloud
+GCP_PROJECT_ID="tu-proyecto-gcp-id-unico"
+GCP_LOCATION="europe-west1"  # O la región asignada a tus modelos de Vertex AI
+
+# Ruta local al archivo JSON de credenciales de la Cuenta de Servicio
+GOOGLE_APPLICATION_CREDENTIALS="gcp-credentials.json"
+```
+
+> ⚠️ **REGLA DE ORO DE SEGURIDAD (ANTI-FILTRACIONES):** Tanto el archivo `.env` como cualquier archivo `.json` de credenciales están estrictamente incluidos en el archivo `.gitignore`. **Nunca, bajo ningún concepto, realices un commit o push de estos archivos al repositorio público de GitHub.** El sistema cargará el JSON en memoria local mediante la variable de entorno nativa de Google `GOOGLE_APPLICATION_CREDENTIALS`.
 
 ---
 
