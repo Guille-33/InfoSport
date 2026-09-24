@@ -3,19 +3,25 @@ import chromadb
 from langchain_core.documents import Document
 from src.embed import embed_question
 from google import genai
-from config import TOP_K,RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE
+from config import RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE,TOP_K
 import re,json
+from src.index import create_chroma
+from src.google_authen import create_client
 
-def search_k(*,client:genai.Client,collection:chromadb.Collection,pregunta:str):
-    vecPregunta=embed_question(client=client,question=pregunta)
+def search_k(*,pregunta:str,top_k:int|None):
+    if top_k is None:
+        top_k=TOP_K
+    client=create_client()
+    collection=create_chroma(create=False)
+    vecPregunta,modelo_embedding=embed_question(client=client,question=pregunta)
     totalCollection=collection.count()
     try:
         resultados=collection.query(
             query_embeddings=vecPregunta,
-            n_results=min(totalCollection,TOP_K),
+            n_results=min(totalCollection,top_k),
             include=['documents','metadatas','distances']
         )
-        return resultados
+        return resultados,modelo_embedding
     except Exception as e:
         print ('Error:',e)
         return None
@@ -57,10 +63,10 @@ def json_2_datos(respuesta:str)->dict:
         text=re.sub(r'\s*```$','',text)
     return json.loads(text)
 
-def generar_respuesta(client:genai.Client,prompt:str)->str:
+def generar_respuesta(client:genai.Client,prompt:str)->tuple[str,str]:
     modelResp=client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
             config={'temperature':TEMPERATURE}
         )
-    return (modelResp.text or '').strip()
+    return (modelResp.text or '').strip(),GEMINI_MODEL

@@ -5,8 +5,9 @@ from pathlib import Path
 
 from google import genai
 from google.genai import types
-from src.chunk import create_chunks
+from src.chunk import cargar_chunks
 from langchain_core.documents import Document
+from src.google_authen import create_client
 
 from config import (
     EMBED_BATCH_SIZE,
@@ -48,63 +49,63 @@ def embeddear_textos(client: genai.Client, textos: list[str]) -> list[list[float
 
     return vectores
 
-def embed_question(client:genai.Client,question:str)->list[float]:
+def embed_question(client:genai.Client,question:str)->tuple[list[float],str]:
     contents=[types.Content(parts=[types.Part(text=question.strip())])]
     response=client.models.embed_content(model=EMBEDDING_MODEL,contents=contents)
-    return list(response.embeddings[0].values)
+    return list(response.embeddings[0].values),EMBEDDING_MODEL
 
-def ejecutar_embeddings(*,client:genai.Client,docs:list[Document],max_embed:int|None=MAX_CHUNKS_EMBED,c_size:int|None) -> tuple[list[dict], Path]:
+def ejecutar_embeddings(*,max_embed:int|None=MAX_CHUNKS_EMBED,create:bool) -> tuple[list[dict], Path]:
     """Función principal que coordina la creación de los embeddings y los guarda en un JSON."""
     # Conecto con el cliente de Gemini (es necesario la API key en el .env)
-
-    chunks = create_chunks(docs=docs,c_size=c_size)
-    total_disponibles = len(chunks)
-
-    # Si puse un límite en config, recortamos la lista para probar rápido
-    if max_embed is not None:
-        subset = chunks[:max_embed]
+    if not create:
+        file=EXPORT_DIR / 'embedding_chunk'
+        items=joblib.load(filename=file)
     else:
-        subset=chunks
+        client=create_client()
+        chunks = cargar_chunks()
+        total_disponibles = len(chunks)
 
-    textos = [c.page_content for c in subset]
+        # Si puse un límite en config, recortamos la lista para probar rápido
+        if max_embed is not None:
+            subset = chunks[:max_embed]
+        else:
+            subset=chunks
 
-    print(f"Generando embeddings para {len(textos)} trozos de texto...")
-    inicio = time.perf_counter()
-    vectores = embeddear_textos(client, textos)
-    tiempo_ms = (time.perf_counter() - inicio) * 1000
-    print(f"¡Listo! Tramos procesados en {tiempo_ms:.0f} ms usando {EMBEDDING_MODEL}")
+        textos = [c['text'] for c in subset]
 
-    # Junto cada texto con su vector numérico y su metadato correspondiente
-    items = []
-    for chunk, vector in zip(subset, vectores):
-        items.append(
-            {
-                "text": chunk.page_content,
-                "vector": vector,
-                "metadata": dict(chunk.metadata),
-            }
-        )
+        print(f"Generando embeddings para {len(textos)} trozos de texto...")
+        inicio = time.perf_counter()
+        vectores = embeddear_textos(client, textos)
+        tiempo_ms = (time.perf_counter() - inicio) * 1000
+        print(f"¡Listo! Tramos procesados en {tiempo_ms:.0f} ms usando {EMBEDDING_MODEL}")
+
+        # Junto cada texto con su vector numérico y su metadato correspondiente
+        items = []
+        for chunk, vector in zip(subset, vectores):
+            items.append(
+                {
+                    "text": chunk['text'],
+                    "vector": vector,
+                    "metadata": chunk.get('metadata',{}),
+                }
+            )
 
     # Preparo el resultado final para guardarlo
     payload = {
         "embedding_model": EMBEDDING_MODEL,
         "total": len(items),
-        "dimensions": len(vectores[0]) if vectores else 0,
+        "dimensions": len(items[0]['vector']) if items[0]['vector'] else 0,
         "items": items,
     }
 
     # Creo la carpeta output si no existe y guardo el archivo
     EMBEDDINGS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    EMBEDDINGS_JSON.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    with open(EMBEDDINGS_JSON, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"Guardado archivo de embeddings en: {EMBEDDINGS_JSON}")
     try:
         EXPORT_DIR.mkdir(parents=True,exist_ok=True)
-        numeroArchivo=1+sum(1 for x in EXPORT_DIR.iterdir() if x.is_file())
-        nombreArchivo=f'embedding_chunk_{numeroArchivo}'
-        archivo_dir=EXPORT_DIR / nombreArchivo
+        archivo_dir=EXPORT_DIR / 'embedding_chunk'
         joblib.dump(items,archivo_dir,compress=3)
     except Exception as e:
         print ('Error:',e)

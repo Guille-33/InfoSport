@@ -3,8 +3,10 @@ from pathlib import Path
 import pandas as pd
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_core.documents import Document
+import re
+from src.chunk import create_chunks,chunks_json
 
-from config import DATA_DIR, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV
+from config import DATA_DIR, EXTENSIONES_PDF, EXTENSIONES_TEXTO, EXTENSIONES_CSV,CHUNKS_JSON
 
 def valor_celda(fila,col):
     if col not in fila or pd.isna(fila[col]):
@@ -18,34 +20,33 @@ def fila_a_texto(fila,etiquetas:list[str])->str:
     lineas=[]
     for e in etiquetas:
         v=valor_celda(fila,e)
-        if v:
-            match e.lower():
-                case 'estado':
-                    match v:
-                        case 'A':
-                            vInterpretado='Reprogramado'
-                        case 'C':
-                            vInterpretado='Comite disciplinario'
-                        case 'F':
-                            vInterpretado='Finalizado'
-                        case 'S':
-                            vInterpretado='Suspendido'
-                        case 'N':
-                            vInterpretado='No presentado'
-                        case 'O':
-                            vInterpretado='Aplazado organizacion'
-                        case 'R':
-                            vInterpretado='Resultado desconocido'
-                        case _:
-                            vInterpretado='Desconocido'
-                case 'sistema_competicion':
-                    try:
-                        vInterpretado=str(v)
-                    except Exception:
-                        vInterpretado='Error'
-                case _:
-                    vInterpretado=v
-            lineas.append(f'{e}: {vInterpretado}')
+        match e.lower():
+            case 'estado':
+                match v:
+                    case 'A':
+                        vInterpretado='Reprogramado'
+                    case 'C':
+                        vInterpretado='Comite disciplinario'
+                    case 'F':
+                        vInterpretado='Finalizado'
+                    case 'S':
+                        vInterpretado='Suspendido'
+                    case 'N':
+                        vInterpretado='No presentado'
+                    case 'O':
+                        vInterpretado='Aplazado organizacion'
+                    case 'R':
+                        vInterpretado='Resultado desconocido'
+                    case _:
+                        vInterpretado='Desconocido'
+            case 'sistema_competicion':
+                try:
+                    vInterpretado=str(v)
+                except Exception:
+                    vInterpretado='Error'
+            case _:
+                vInterpretado=v
+        lineas.append(f'{e}: {vInterpretado}')
     return '\n'.join(lineas)
 
 def nombre(file:Path)->str:
@@ -120,3 +121,37 @@ def cargar_documentos() -> tuple[list[Document],int|None]:
             documentos.extend(docs)
 
     return documentos,maxLen
+
+def normalizar(text:str)->str:
+    t=text.replace('\r\n','\n').replace('\r','\n')
+    t=re.sub(r'\n{3.}','\n\n',t)
+    t=re.sub(r'[ \t]+',' ',t)
+    return '\n'.join(linea.strip() for linea in t.split('\n')).strip()
+
+def loading()->None:
+    docs,c_size=cargar_documentos()
+    clean_docs=[]
+    clean_docs = []
+    for d in docs:
+        text = normalizar(d.page_content)
+        if not text:
+            continue
+            
+        # Si el documento viene de un PDF (reglamento), le inyectamos contexto semántico
+        source_file = d.metadata.get('source', '').lower()
+        if 'eli' in source_file:
+            # Forzamos a que el texto empiece autodefiniéndose. 
+            # Esto blinda el trozo contra el "efecto guillotina" del text splitter.
+            text = f"[DOCUMENTO: REGLAMENTO DE LAS INSTALACIONES DEPORTIVAS MUNICIPALES] \n{text}"
+            
+        clean_docs.append(
+            Document(
+                page_content=text,
+                metadata=dict(d.metadata)
+            )
+        )
+    print(f'\nDocumentos limpios: {len(clean_docs)}')
+    chunks=create_chunks(docs=clean_docs,c_size=c_size)
+    chunks_json(chunks=chunks,ruta=CHUNKS_JSON,c_size=c_size)
+    print(f'{len(chunks)} chunks guradados en {CHUNKS_JSON}')
+
