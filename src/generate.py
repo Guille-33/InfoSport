@@ -40,3 +40,8 @@ def ejecutar_evaluacion() -> None:
         if r.get("notas"):
             print(f"  notas: {r['notas']}")
         print()
+def evaluar_k(pregunta:str)->None:
+    print('TOP_K=2\n------------------------------\n')
+    responder(pregunta=pregunta,top_k=2)
+    print('\nTOP_K=5\n------------------------------\n')
+    responder(pregunta=pregunta,top_k=5)

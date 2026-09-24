@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import streamlit as st
+import pandas as pd
+import time
 
-from config import TOP_K
+from config import TOP_K,GEMINI_MODEL
 from src.logic import responder
 
 st.set_page_config(
@@ -22,10 +24,16 @@ with st.sidebar:
 consulta = st.text_input("Consulta")
 enviar = st.button("Consultar", type="primary")
 
+datos_metricas={
+    'metricas':['TOP_k','modelo_resouesta','tiempo'],
+    'valores': [top_k,GEMINI_MODEL]
+}
+
 if enviar:
     if not (consulta or "").strip():
         st.warning("Escribe una consulta.")
     else:
+        t_ini=time.time()
         with st.spinner("Consultando el corpus…"):
             resultado = responder(pregunta=consulta.strip(), top_k=top_k)
 
@@ -41,3 +49,9 @@ if enviar:
             if resultado.get("contexto"):
                 with st.expander("Contexto recuperado (debug)"):
                     st.text(resultado["contexto"])
+        datos_metricas.get('valores',[]).append(time.time()-t_ini)
+        df = pd.DataFrame(datos_metricas)
+        st.subheader("Métricas de Rendimiento Mensual")
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+

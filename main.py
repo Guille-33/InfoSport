@@ -6,7 +6,7 @@ from src.embed import ejecutar_embeddings
 from src.index import index_2_chroma
 from src.retrieve import search_k,generar_context
 from src.logic import responder
-from src.generate import ejecutar_evaluacion
+from src.generate import ejecutar_evaluacion,evaluar_k
 
 def _cmd_prepare(create:bool=False) -> None:   
     loading()
@@ -49,11 +49,12 @@ def main() -> None:
     parser.add_argument("--ask", type=str, help="RAG completo: responder()")
     parser.add_argument("--top-k", type=int, default=None)
     parser.add_argument("--eval", action="store_true", help="Eval respuestas")
+    parser.add_argument("--kEval", type=str, help="Eval top_k misma respuesta")
 
     args = parser.parse_args()
 
     if not any(
-        [args.check, args.prepare, args.index, args.query, args.ask, args.eval]
+        [args.check, args.prepare, args.index, args.query, args.ask, args.eval, args.kEval]
     ):
         parser.print_help()
         print(
@@ -61,6 +62,7 @@ def main() -> None:
             "  python main.py --prepare --index\n"
             '  python main.py --ask "¿Qué mide la magnitud 83?"\n'
             "  python main.py --eval\n"
+            '  python main.py --ask "¿Qué mide la magnitud 83?"\n'
             "  streamlit run app.py"
         )
         return
@@ -75,6 +77,8 @@ def main() -> None:
         _cmd_ask(args.ask, args.top_k)
     if args.eval:
         ejecutar_evaluacion()
+    if args.kEval:
+        evaluar_k(pregunta=args.kEval)
 
 
 if __name__ == "__main__":
