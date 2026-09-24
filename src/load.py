@@ -20,34 +20,33 @@ def fila_a_texto(fila,etiquetas:list[str])->str:
     lineas=[]
     for e in etiquetas:
         v=valor_celda(fila,e)
-        if v:
-            match e.lower():
-                case 'estado':
-                    match v:
-                        case 'A':
-                            vInterpretado='Reprogramado'
-                        case 'C':
-                            vInterpretado='Comite disciplinario'
-                        case 'F':
-                            vInterpretado='Finalizado'
-                        case 'S':
-                            vInterpretado='Suspendido'
-                        case 'N':
-                            vInterpretado='No presentado'
-                        case 'O':
-                            vInterpretado='Aplazado organizacion'
-                        case 'R':
-                            vInterpretado='Resultado desconocido'
-                        case _:
-                            vInterpretado='Desconocido'
-                case 'sistema_competicion':
-                    try:
-                        vInterpretado=str(v)
-                    except Exception:
-                        vInterpretado='Error'
-                case _:
-                    vInterpretado=v
-            lineas.append(f'{e}: {vInterpretado}')
+        match e.lower():
+            case 'estado':
+                match v:
+                    case 'A':
+                        vInterpretado='Reprogramado'
+                    case 'C':
+                        vInterpretado='Comite disciplinario'
+                    case 'F':
+                        vInterpretado='Finalizado'
+                    case 'S':
+                        vInterpretado='Suspendido'
+                    case 'N':
+                        vInterpretado='No presentado'
+                    case 'O':
+                        vInterpretado='Aplazado organizacion'
+                    case 'R':
+                        vInterpretado='Resultado desconocido'
+                    case _:
+                        vInterpretado='Desconocido'
+            case 'sistema_competicion':
+                try:
+                    vInterpretado=str(v)
+                except Exception:
+                    vInterpretado='Error'
+            case _:
+                vInterpretado=v
+        lineas.append(f'{e}: {vInterpretado}')
     return '\n'.join(lineas)
 
 def nombre(file:Path)->str:
@@ -132,10 +131,19 @@ def normalizar(text:str)->str:
 def loading()->None:
     docs,c_size=cargar_documentos()
     clean_docs=[]
+    clean_docs = []
     for d in docs:
-        text=normalizar(d.page_content)
+        text = normalizar(d.page_content)
         if not text:
             continue
+            
+        # Si el documento viene de un PDF (reglamento), le inyectamos contexto semántico
+        source_file = d.metadata.get('source', '').lower()
+        if 'eli' in source_file:
+            # Forzamos a que el texto empiece autodefiniéndose. 
+            # Esto blinda el trozo contra el "efecto guillotina" del text splitter.
+            text = f"[DOCUMENTO: REGLAMENTO DE LAS INSTALACIONES DEPORTIVAS MUNICIPALES] \n{text}"
+            
         clean_docs.append(
             Document(
                 page_content=text,

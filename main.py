@@ -6,6 +6,7 @@ from src.embed import ejecutar_embeddings
 from src.index import index_2_chroma
 from src.retrieve import search_k,generar_context
 from src.logic import responder
+from src.generate import ejecutar_evaluacion
 
 def _cmd_prepare(create:bool=False) -> None:   
     loading()
@@ -72,8 +73,8 @@ def main() -> None:
         _cmd_query(args.query, args.top_k)
     if args.ask:
         _cmd_ask(args.ask, args.top_k)
-    # if args.eval:
-    #     ejecutar_evaluacion()
+    if args.eval:
+        ejecutar_evaluacion()
 
 
 if __name__ == "__main__":

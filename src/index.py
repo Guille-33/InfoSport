@@ -1,8 +1,9 @@
 import chromadb
 from pathlib import Path
 from langchain_core.documents import Document
-from config import CHROMA_DIR,COLLECTION_NAME,MAX_GRUPO_CHROMA,EMBEDDINGS_JSON,EMBEDDING_MODEL
+from config import CHROMA_DIR,COLLECTION_NAME,MAX_GRUPO_CHROMA,EMBEDDING_EXPORT,EMBEDDING_MODEL
 import json
+import joblib
 
 def create_chroma(*,create:bool)->chromadb.Collection:
     client=chromadb.PersistentClient(path=str(CHROMA_DIR))
@@ -73,10 +74,11 @@ def cargar_embeddings() -> tuple[list[dict], str]:
     El modelo se guarda en metadatos del índice para documentar con qué
     embedding se construyó (debe coincidir con el de la consulta en Fase 2).
     """
-    if not EMBEDDINGS_JSON.exists():
-        raise FileNotFoundError(
-            f"No existe {EMBEDDINGS_JSON}. Ejecuta antes: python main.py --prepare"
-        )
-    data = json.loads(EMBEDDINGS_JSON.read_text(encoding="utf-8"))
-    modelo = data.get("embedding_model", EMBEDDING_MODEL)
-    return data.get("items", []), modelo
+    # if not EMBEDDINGS_JSON.exists():
+    #     raise FileNotFoundError(
+    #         f"No existe {EMBEDDINGS_JSON}. Ejecuta antes: python main.py --prepare"
+    #     )
+    # data = json.loads(EMBEDDINGS_JSON.read_text(encoding="utf-8"))
+    # modelo = data.get("embedding_model", EMBEDDING_MODEL)
+    # return data.get("items", []), modelo
+    return joblib.load(EMBEDDING_EXPORT),EMBEDDING_MODEL
