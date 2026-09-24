@@ -1,1 +1,166 @@
-# InfoSport
+# 📊 InfoSport: Motor RAG Corporativo de Gestión Deportiva Municipal
+
+> **Transforma el caos de los datos abiertos y la normativa pública en un asistente conversacional infalible, ultra-anclado a contexto y con cero alucinaciones.**
+
+---
+
+## 🌟 Valor Comercial y Propuesta de Valor
+
+**InfoSport** no es un bot genérico de IA; es un **motor RAG end-to-end de nivel empresarial** diseñado específicamente para resolver el problema de la fragmentación de información en la administración pública y deportiva. 
+
+### ¿Por qué InfoSport?
+* **Anclaje Radical al Contexto (Anti-Alucinación):** Nuestro sistema implementa barreras de seguridad (*guardrails*) estrictas. Si la respuesta no está en el corpus documental autorizado, el sistema se abstiene de responder de manera segura en lugar de inventar datos. Un activo crítico para la reputación de tu entidad.
+* **Arquitectura de Extracción Multiformato:** Procesa de forma unificada desde documentos narrativos de alta densidad (normativas en PDF) hasta datos tabulares estructurados (tarifas y polideportivos en CSV).
+* **Diseñado para el Futuro (Agent-Ready):** La lógica de negocio está 100% aislada de la interfaz gráfica. Cuenta con un contrato de API interna (`responder()`) diseñado específicamente para integrarse directamente como una **Tool** en arquitecturas de Agentes Autónomos o pipelines de MLOps.
+
+---
+
+## 📌 Temática y Corpus de Datos Curado
+
+El sistema está entrenado y especializado en el **Dominio de Deporte Municipal de Madrid**, procesando datos actualizados para el año **2026**.
+
+### 📁 Fuentes Oficiales e Ingesta de Datos:
+El corpus combina **múltiples formatos (PDF y CSV)** para una recuperación híbrida óptima:
+1. **Formatos de Texto Técnico (PDF):**
+   * *Precios Públicos Centros Deportivos 2026:* Reglamento oficial de tarifas ([Enlace Oficial](https://madrid.es)).
+   * *Reglamento de Uso de Instalaciones:* Normativa jurídica de acceso y penalizaciones ([Enlace Oficial](https://madrid.es)).
+2. **Formatos Estructurados (CSV):**
+   * *Catálogo de Polideportivos Municipales:* Ubicaciones, geolocalización y servicios ([Enlace Oficial](https://madrid.es)).
+   * *Piscinas Públicas de Madrid:* Listado oficial de recintos estivales y cubiertos ([Enlace de Datos Abiertos](https://madrid.es)).
+
+### 🎯 Alcance Conversacional (Ejemplos):
+* **Preguntas In-Corpus (Soportadas):**
+  * *¿Cuánto cuesta el abono de piscina mensual para un adulto?*
+  * *¿Puedo reservar una pista de pádel si no estoy empadronado en Madrid?*
+  * *¿Cuáles son las penalizaciones por cancelar una reserva tarde?*
+* **Preguntas Out-of-Corpus (Abstención Controlada):**
+  * *¿Cuál es el menú del restaurante del polideportivo de Moratalaz?* -> El sistema responderá formalmente que no dispone de esa información en los documentos oficiales.
+
+---
+
+## 🧩 Estructura Modular del Proyecto
+
+El código sigue una estricta **separación de responsabilidades**, eliminando los scripts monolíticos para garantizar un mantenimiento empresarial limpio:
+
+```text
+project_break_rag/
+├── .streamlit/             # Configuración visual de la interfaz de usuario
+├── data/                   # Carpeta local del corpus (Documentos PDF y CSV públicos)
+├── entregables/            # Documentación estratégica de ingeniería
+│   └── informe_decisiones.md  # Informe de experimentos de Chunking, barridos de K y fallos
+├── queries/                # Baterías de preguntas de evaluación (In/Out corpus)
+├── src/                    # Núcleo modular del Motor RAG (API Interna)
+│   ├── load.py             # Ingestores específicos por tipo de archivo (PDF/CSV)
+│   ├── chunk.py            # Estrategias avanzadas de fragmentación y solapamiento
+│   ├── embed.py            # Generación de vectores densos de significado
+│   ├── index.py            # Conector de base de datos vectorial persistente (ChromaDB)
+│   ├── retrieve.py         # Algoritmo de búsqueda semántica Top-K
+│   ├── generate.py         # Orquestador del LLM con prompts delimitados
+│   └── logging_utils.py    # Auditoría de rendimiento (tiempos, modelo, K)
+├── .env.example            # Plantilla limpia de variables de entorno (Sin secretos)
+├── .gitignore              # Exclusión estricta de entornos virtuales, claves e índices Chroma
+├── app.py                  # Interfaz Conversacional Comercial en Streamlit
+├── config.py               # Centralización de hiperparámetros (Límites, modelos, K)
+├── main.py                 # Interfaz de Línea de Comandos (CLI) para administración
+└── requirements.txt        # Dependencias de producción congeladas
+```
+
+---
+
+## 🛠️ Requisitos Técnicos e Instalación
+
+### Requisitos del Sistema
+* Python 3.10 o superior.
+* API Key del proveedor de LLM configurado (Stack por defecto optimizado para **Google Gemini** o **OpenAI** vía LangChain).
+
+### Guía de Despliegue Rápido:
+Sigue estos pasos detallados para inicializar el motor de datos desde cero:
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com
+cd InfoSport
+
+# 2. Crear e iniciar el entorno virtual aislado
+python -m venv .venv
+source .venv/bin/activate  # En Windows usar: .venv\Scripts\activate
+
+# 3. Instalar las dependencias de producción
+pip install -r requirements.txt
+
+# 4. Configurar las credenciales de entorno de forma segura
+cp .env.example .env
+```
+
+> ⚠️ **IMPORTANTE:** Abre el archivo `.env` recién creado y añade tu API Key correspondiente (por ejemplo, `GEMINI_API_KEY=tu_clave_aqui`). El archivo `.env` está en el `.gitignore` y **nunca** debe subirse al repositorio público.
+
+---
+
+## 🚀 Guía de Uso del Motor (Manual de la CLI)
+
+El motor separa estrictamente los procesos **Offline** (Carga e indexación de datos en frío) de los procesos **Online** (Consultas en tiempo real).
+
+### 1. Inicialización y Recreación del Índice (Proceso Offline)
+Para leer los archivos de la carpeta `data/`, aplicar las estrategias de chunking, generar vectores e indexarlos en la base de datos persistente **ChromaDB**:
+```bash
+python main.py --index
+```
+*Nota: Si modificas el tamaño del chunk o el modelo de embeddings en `config.py`, ejecuta este comando para destruir la colección antigua y regenerar el índice de manera limpia.*
+
+### 2. Modo Auditoría: Solo Recuperación Semántica
+Si quieres inspeccionar qué bloques de texto extrae el buscador semántico según una pregunta, aislando la respuesta de la IA (útil para optimizar el ruido):
+```bash
+python main.py --query "¿Cuáles son las tarifas de la piscina olímpica?"
+```
+
+### 3. Modo RAG Completo en Consola
+Para obtener la respuesta estructurada final generada por el LLM, estrictamente anclada al contexto del corpus:
+```bash
+python main.py --ask "¿Qué ocurre si cancelo una pista con menos de 24 horas de antelación?"
+```
+
+---
+
+## 💻 Interfaz Web Comercial (Streamlit)
+
+Para mostrar el producto a clientes finales o usuarios no técnicos de la federación deportiva, InfoSport incluye una aplicación web interactiva que simula una experiencia de producción.
+
+Para lanzar la aplicación:
+```bash
+streamlit run app.py
+```
+
+### Características de la UI de Control:
+* **Chat de Conversación Fluido:** Diseñado mediante componentes nativos `st.chat_input` y `st.chat_message`.
+* **Transparencia en la Evidencia:** Al desplegar una respuesta, el usuario puede inspeccionar visualmente los **Chunks de Contexto Recuperados**, visualizando el archivo `source` original del que se extrajo la información.
+* **Cuadro de Mandos de Métricas (Dashboard):** Visualización en tiempo real de los metadatos de rendimiento de cada interacción:
+  * Valor de recuperación $K$ activo.
+  * Número total de chunks procesados por el prompt.
+  * Tiempo exacto de latencia en la generación (segundos).
+  * Identificación del modelo fundacional utilizado.
+
+---
+
+## 📋 Normas de Ingeniería, Calidad y Gobernanza del Proyecto
+
+Para garantizar que el software sea robusto y escalable, el desarrollo sigue un estricto flujo de ingeniería de software corporativa:
+
+### ⚙️ Configuración y Gobierno de Datos (`config.py`)
+Cualquier cambio de comportamiento del RAG se gestiona centralizadamente desde el archivo de configuración. Parámetros auditables:
+* `TOP_K`: Número de fragmentos inyectados al prompt (Evaluado exhaustivamente en valores como `K=1`, `K=3` y `K=5` para mitigar el ruido).
+* `CHUNK_SIZE` y `CHUNK_OVERLAP`: Control numérico de la granularidad de la información.
+* `PROMPT_TEMPLATES`: Secciones rígidamente delimitadas mediante bloques claros:
+  ```text
+  === INSTRUCCIONES DE ABSTENCIÓN CORPORATIVA ===
+  Utiliza exclusivamente el contexto provisto para responder. Si la respuesta no puede deducirse de los datos, di exactamente "No dispongo de información oficial sobre esa consulta en los documentos".
+  
+  --- CONTEXTO AUTORIZADO ---
+  {contexto_recuperado_chromadb}
+  
+  --- PREGUNTA DEL USUARIO ---
+  {pregunta_cliente}
+  ```
+
+### 🌿 Políticas de Trabajo en Equipo y Control de Versiones (Git)
+* **Garantía de Estabilidad:** La rama `main` es sagrada; solo contiene versiones estables de producción aptas para demostración.
+* **Integración Continua de Equipo:** Queda terminantemente prohibido hacer push directo sobre `main` o `develop`. Todo cambio de funcionalidad se realiza mediante ramas secundarias descriptivas (p. ej., `feature/index-retrieval`, `feature/streamlit-ui`) y requiere una **Pull Request (PR) revisada, comentada y aprobada** por los miembros del equipo antes de su fusión.
