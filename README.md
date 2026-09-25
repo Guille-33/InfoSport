@@ -123,6 +123,7 @@ El motor separa estrictamente los procesos **Offline** (Carga e indexación de d
 ### 1. Inicialización y Recreación del Índice (Proceso Offline)
 Para leer los archivos de la carpeta `data/`, aplicar las estrategias de chunking, generar vectores e indexarlos en la base de datos persistente **ChromaDB**:
 ```bash
+python main.py --prepare
 python main.py --index
 ```
 *Nota: Si modificas el tamaño del chunk o el modelo de embeddings en `config.py`, ejecuta este comando para destruir la colección antigua y regenerar el índice de manera limpia.*
