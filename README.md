@@ -171,16 +171,6 @@ Cualquier cambio de comportamiento del RAG se gestiona centralizadamente desde e
 * `TOP_K`: Número de fragmentos inyectados al prompt (Evaluado exhaustivamente en valores como `K=1`, `K=3` y `K=5` para mitigar el ruido).
 * `CHUNK_SIZE` y `CHUNK_OVERLAP`: Control numérico de la granularidad de la información.
 * `PROMPT_TEMPLATES`: Secciones rígidamente delimitadas mediante bloques claros:
-  ```text
-  === INSTRUCCIONES DE ABSTENCIÓN CORPORATIVA ===
-  Utiliza exclusivamente el contexto provisto para responder. Si la respuesta no puede deducirse de los datos, di exactamente "No dispongo de información oficial sobre esa consulta en los documentos".
-  
-  --- CONTEXTO AUTORIZADO ---
-  {contexto_recuperado_chromadb}
-  
-  --- PREGUNTA DEL USUARIO ---
-  {pregunta_cliente}
-  ```
 
 ### 🌿 Políticas de Trabajo en Equipo y Control de Versiones (Git)
 * **Garantía de Estabilidad:** La rama `main` es sagrada; solo contiene versiones estables de producción aptas para demostración.
