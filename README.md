@@ -22,19 +22,11 @@ El sistema está entrenado y especializado en el **Dominio de Deporte Municipal 
 ### 📁 Fuentes Oficiales e Ingesta de Datos:
 El corpus combina **múltiples formatos (PDF y CSV)** para una recuperación híbrida óptima:
 1. **Formatos de Texto Técnico (PDF):**
-   * *Precios Públicos Centros Deportivos 2026:* Reglamento oficial de tarifas ([Enlace Oficial](https://madrid.es)).
    * *Reglamento de Uso de Instalaciones:* Normativa jurídica de acceso y penalizaciones ([Enlace Oficial](https://madrid.es)).
+   * *Explicacion campos csv*
 2. **Formatos Estructurados (CSV):**
-   * *Catálogo de Polideportivos Municipales:* Ubicaciones, geolocalización y servicios ([Enlace Oficial](https://madrid.es)).
-   * *Piscinas Públicas de Madrid:* Listado oficial de recintos estivales y cubiertos ([Enlace de Datos Abiertos](https://madrid.es)).
-
-### 🎯 Alcance Conversacional (Ejemplos):
-* **Preguntas In-Corpus (Soportadas):**
-  * *¿Cuánto cuesta el abono de piscina mensual para un adulto?*
-  * *¿Puedo reservar una pista de pádel si no estoy empadronado en Madrid?*
-  * *¿Cuáles son las penalizaciones por cancelar una reserva tarde?*
-* **Preguntas Out-of-Corpus (Abstención Controlada):**
-  * *¿Cuál es el menú del restaurante del polideportivo de Moratalaz?* -> El sistema responderá formalmente que no dispone de esa información en los documentos oficiales.
+   * *Listado de partidos:* Ubicaciones, equipos, puntos... [Enlace Oficial](https://datos.madrid.es/dataset/211549-0-juegos-deportivos-actual)
+   * *Clasificaciones:* posición, partidos ganados, partidos perdidos... [Enlace Oficial](https://datos.madrid.es/dataset/211549-0-juegos-deportivos-actual)
 
 ---
 
