@@ -1,8 +1,7 @@
 import chromadb
-from pathlib import Path
 from langchain_core.documents import Document
 from config import CHROMA_DIR,COLLECTION_NAME,MAX_GRUPO_CHROMA,EMBEDDING_EXPORT,EMBEDDING_MODEL
-import json
+# import json
 import joblib
 
 def create_chroma(*,create:bool)->chromadb.Collection:
