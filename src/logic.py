@@ -1,8 +1,9 @@
-from src.retrieve import search_k,json_2_datos,generar_context,generar_respuesta,build_prompt
+from src.retrieve import search_k,json_2_datos
+from src.generate import generar_context,generar_respuesta,build_prompt
 import json
 from src.google_authen import create_client
 from src.logging_utils import registrar_consulta_json
-from config import TOP_K
+from config import TOP_K,MAX_QUEST
 import time
 
 def resp_ok(datos:dict,context,resultados)->dict:
@@ -63,6 +64,14 @@ def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
             "fuentes": [],
             "error": "La pregunta no puede estar vacía.",
         }
+    elif len(pregunta)>MAX_QUEST:
+        return{
+            "respuesta": "",
+            "contexto": "",
+            "results": None,
+            "fuentes": [],
+            "error": "La pregunta es demasiado larga.",
+        }
     resultados,modelo_embedding=search_k(pregunta=question,top_k=top_k)
     context=generar_context(resultados=resultados)
     if context == "Fuera de scope":
@@ -74,7 +83,11 @@ def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
             "error": "No se recuperó contexto. Revisa el índice.",
         }
     prompt=build_prompt(context=context,pregunta=question)
-    modelResp,modelo=generar_respuesta(client=client,prompt=prompt)
+    try:
+        modelResp,modelo=generar_respuesta(client=client,prompt=prompt)
+    except Exception as e:
+        error=str(e)
+        return resp_error(respuesta='',error=error)
     try:
         datos=json_2_datos(modelResp)
         se_abstuvo=not datos.get('hay_evidencia',False)

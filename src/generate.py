@@ -1,47 +1,41 @@
-import json
+from google import genai
+from config import RAG_BEHAVIOUR,GEMINI_MODEL,TEMPERATURE
+from pathlib import Path
 
-from config import EVAL_JSON
-from .logic import responder
+def generar_respuesta(client:genai.Client,prompt:str)->tuple[str,str]:
+    modelResp=client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config={'temperature':TEMPERATURE}
+        )
+    return (modelResp.text or '').strip(),GEMINI_MODEL
 
+def generar_context(resultados:dict)->str:
+    ids=resultados['ids'][0]
+    documents=resultados['documents'][0]
+    metadatas=resultados['metadatas'][0]
+    distances=resultados['distances'][0]
+    lines=[]
+    for i,doc_id in enumerate(ids):
+        text=documents[i]
+        dist=distances[i]
+        meta=metadatas[i]
+        ruta=Path(meta.get('source','?')).name
+        lines.append(f'''
+--- Fragmento {i+1} (distancia={dist:.4f}) ---
+Fuente: {ruta}
+{text}
+''')
+    if not lines:
+        return 'Fuera de scope'
+    return '\n\n'.join(lines)
 
-def evaluar_pregunta(item: dict) -> dict:
-    texto = item.get("texto", "")
-    resultado = responder(pregunta=texto)
-    return {
-        "id": item.get("id"),
-        "texto": texto,
-        "deberia_abstenerse": bool(item.get("deberia_abstenerse")),
-        "respuesta": resultado.get("respuesta", ""),
-        "fuentes": resultado.get("fuentes") or [],
-        "error": resultado.get("error"),
-        "notas": item.get("notas", ""),
-    }
-
-
-def ejecutar_evaluacion() -> None:
-    if not EVAL_JSON.exists():
-        raise FileNotFoundError(f"No existe {EVAL_JSON}")
-
-    data = json.loads(EVAL_JSON.read_text(encoding="utf-8"))
-    preguntas = data.get("preguntas", [])
-    print(f"Evaluando {len(preguntas)} preguntas…\n")
-
-    for item in preguntas:
-        r = evaluar_pregunta(item)
-        print("=" * 60)
-        print(f"[{r['id']}] {r['texto']}")
-        print(f"  deberia_abstenerse={r['deberia_abstenerse']}")
-        if r.get("error"):
-            print(f"  ERROR: {r['error']}")
-        else:
-            resp = (r.get("respuesta") or "")[:500]
-            print(f"  respuesta: {resp}")
-            print(f"  fuentes: {r.get('fuentes')}")
-        if r.get("notas"):
-            print(f"  notas: {r['notas']}")
-        print()
-def evaluar_k(pregunta:str)->None:
-    print('TOP_K=2\n------------------------------\n')
-    responder(pregunta=pregunta,top_k=2)
-    print('\nTOP_K=5\n------------------------------\n')
-    responder(pregunta=pregunta,top_k=5)
+def build_prompt(context:str,pregunta:str)->str:
+    return(
+        f"{RAG_BEHAVIOUR.strip()}\n\n"
+        f"--- CONTEXTO RECUPERADO ---\n"
+        f"{context.strip()}\n\n"
+        f"--- PREGUNTA ---\n"
+        f"{pregunta.strip()}\n\n"
+        f"--- JSON ---"
+    )

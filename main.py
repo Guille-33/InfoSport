@@ -4,9 +4,10 @@ import json,argparse
 from src.load import loading
 from src.embed import ejecutar_embeddings
 from src.index import index_2_chroma
-from src.retrieve import search_k,generar_context
+from src.retrieve import search_k
+from src.generate import generar_context
 from src.logic import responder
-from src.generate import ejecutar_evaluacion,evaluar_k
+from eval import ejecutar_evaluacion,evaluar_k
 
 def _cmd_prepare(create:bool=False) -> None:   
     loading()
