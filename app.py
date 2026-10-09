@@ -131,30 +131,3 @@ if prompt := st.chat_input("Tu pregunta sobre la agenda cultural…"):
     df = pd.DataFrame(datos_metricas)
     st.subheader("Métricas de Rendimiento Mensual")
     st.dataframe(df, width="stretch", hide_index=True)
-
-# if enviar:
-#     if not (consulta or "").strip():
-#         st.warning("Escribe una consulta.")
-#     else:
-#         t_ini=time.time()
-#         with st.spinner("Consultando el corpus…"):
-#             resultado = responder(pregunta=consulta.strip(), top_k=top_k)
-
-#         if resultado.get("error"):
-#             st.error(resultado["error"])
-#         else:
-#             st.markdown(resultado.get("respuesta") or "(sin respuesta)")
-#             fuentes = resultado.get("fuentes") or []
-#             if fuentes:
-#                 st.markdown("**Fuentes**")
-#                 for f in fuentes:
-#                     st.write(f"- `{f}`")
-#             if resultado.get("contexto"):
-#                 with st.expander("Contexto recuperado (debug)"):
-#                     st.text(resultado["contexto"])
-#         datos_metricas.get('valores',[]).append(time.time()-t_ini)
-#         df = pd.DataFrame(datos_metricas)
-#         st.subheader("Métricas de Rendimiento Mensual")
-#         st.dataframe(df, width="stretch", hide_index=True)
-
-
