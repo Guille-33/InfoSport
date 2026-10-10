@@ -131,3 +131,4 @@ if prompt := st.chat_input("Tu pregunta sobre la agenda cultural…"):
     df = pd.DataFrame(datos_metricas)
     st.subheader("Métricas de Rendimiento Mensual")
     st.dataframe(df, width="stretch", hide_index=True)
+
