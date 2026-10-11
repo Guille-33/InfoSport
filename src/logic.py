@@ -82,5 +82,9 @@ def responder(*,pregunta:str,top_k:int|None=TOP_K)->tuple[str,dict]:
     except json.JSONDecodeError as e:
         error=str(e)
         return resp_error(error,respuesta=modelResp)
+
+def rag_ask(pregunta:str,top_k:int|None)->str:
+    texto,diccionario=responder(pregunta=pregunta,top_k=top_k)
+    return texto
     
     
