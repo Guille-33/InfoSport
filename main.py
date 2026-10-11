@@ -7,7 +7,7 @@ from src.index import index_2_chroma
 from src.retrieve import search_k
 from src.generate import generar_context
 from src.logic import responder
-from eval import ejecutar_evaluacion,evaluar_k
+from src.eval import ejecutar_evaluacion,evaluar_k
 
 def _cmd_prepare(create:bool=False) -> None:   
     loading()
