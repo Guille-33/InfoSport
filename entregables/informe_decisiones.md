@@ -1,4 +1,3 @@
-
 # 📑 Informe de Decisiones de Ingeniería y Evaluación del Motor RAG
 
 Este informe detalla las decisiones de arquitectura, estrategias de procesamiento de datos y la evaluación experimental del motor RAG corporativo **InfoSport** para la gestión deportiva municipal.
@@ -47,33 +46,38 @@ Para determinar la granularidad óptima del RAG, se realizaron pruebas de rendim
 
 ## 📉 4. Evaluación del Hiperparámetro K (Barrido de Recuperación)
 
+`"¿cual es el equipo con posición más baja?"`
+
 | Configuración | Resultado de la Respuesta | Motivo / Evidencia | Conclusión |
 | :--- | :--- | :--- | :--- |
-| **TOP_K=2** | `[Not Found]` | Solo se incluye información de un único equipo (Juan de Dios - Ensanche VK D, posición 5.0). Falta el contexto del resto del grupo. | **Insuficiencia de datos:** Un valor de `TOP_K` muy bajo limita el contexto recuperado, impidiendo que el modelo obtenga la información completa para responder a la consulta. |
-| **TOP_K=5** | `[OK]` | Se identifica correctamente al equipo **CDE VICÁLVARO BALONCESTO** en la posición más baja registrada (7.0) dentro del archivo `211549-2-clasificacion-csv.csv`. | **Contexto óptimo:** Ampliar el `TOP_K` permite al modelo acceder a más filas del documento, logrando extraer una clasificación del grupo 'JDM VIV MBC BEN MIX' y resolver la pregunta. El top_k limita la respuesta y solo será correcta si el top_k envuelve a todas las entradas del grupo |
+| **TOP_K=2** | `[OK]` | Solo se incluye información de dos equipos Falta el contexto del resto del grupo. | **Insuficiencia de datos:** Un valor de `TOP_K` muy bajo limita el contexto recuperado, impidiendo que el modelo obtenga la información completa para responder a la consulta de manera correcta. |
+| **TOP_K=5** | `[OK]` | Se identifica otro equipo distinto con una poscion aun menor dentro del archivo `211549-2-clasificacion-csv.csv`. | **Contexto óptimo:** Ampliar el `TOP_K` permite al modelo acceder a más filas del documento. El top_k limita la respuesta y solo será correcta si el top_k envuelve a todas las entradas del grupo |
 
 A continuación, se detalla el comportamiento del sistema al modificar el valor de \(K\) (número de fragmentos inyectados al prompt del modelo) ante una misma batería de preguntas de evaluación:
 
-| Métrica / Parámetro | Recuperación Baja \(K = 2\) | Recuperación Alta \(K = 5\) |
+| Métrica / Parámetro | Recuperación Baja (\(K = 2\)) | Recuperación Alta (\(K = 5\)) |
 | :--- | :--- | :--- |
-| **Precisión de Respuesta** | Alerta de información incompleta en consultas complejas. | Alta precisión. Captura contexto principal y secundarios. |
+| **Precisión de Respuesta** | Alerta de información incompleta en consultas complejas. | Mayor precisión. Captura contexto principal y secundarios. |
 | **Consumo de Tokens** | Muy bajo y económico. | Moderado, pero dentro de los márgenes eficientes. |
 | **Latencia de Generación** | Rápida (Menor tiempo de procesamiento del LLM). | Ligeramente superior debido al análisis de contexto extenso. |
-| **Riesgo de Ruido/Alucinación**| Mínimo, pero propenso a la abstención segura. | Mayor riesgo si los chunks irrelevantes confunden al modelo. |
+| **Riesgo de Ruido/Alucinación**| Mínimo, pero propenso a la abstención segura o alucinaciones controladas por falta de un contexto mayor (vision muy reducida de la situación). | Mayor riesgo si los chunks irrelevantes confunden al modelo. |
 
 ---
 
 ## 🔍 5. Casos de Éxito del Sistema (Ejemplos Reales)
 
 ### Acierto Rotundo (Anclaje Exitoso)
-*   **Pregunta de Evaluación:** *"¿Qué ocurre si cancelo una pista con menos de 24 horas de antelación?"*
-*   **Chunks Recuperados (\(K=3\)):** `[Reglamento_Instalaciones.pdf] "Art. 24: Las cancelaciones con menos de 24 horas de antelación no tendrán derecho a devolución de la tasa municipal..."`
-*   **Respuesta del LLM:** *"De acuerdo con el Artículo 24 del Reglamento de Uso de Instalaciones, si cancelas una pista con menos de 24 horas de antelación perderás el derecho a la devolución de la tasa abonada."*
+*   **Pregunta de Evaluación:** *"¿Hay partidos suspendidos?"*
+*   **Chunks Recuperados \(K=3\):** 
+    * `...Nombre_jornada: 17 Equipo_local: INAFUMA YBEBEN Equipo_visitante: CABALLO FC...` 
+    * `...Nombre_jornada: 8 Equipo_local: Racing Villaverde B Equipo_visitante: C.D. CIUDAD DE LOS ÁNGELES "A"...` 
+    * `...Nombre_jornada: 14 Equipo_local: COLEGIO BARCELONA CDCA Equipo_visitante: FUTSALA VILLAVERDE...`
+*   **Respuesta del LLM:** *"Sí, existen partidos suspendidos en la información proporcionada. Por ejemplo, se encuentran suspendidos los partidos entre INAFUMA YBEBEN y CABALLO FC (Jornada 17), Racing Villaverde B contra C.D. CIUDAD DE LOS ÁNGELES "A" (Jornada 8), y COLEGIO BARCELONA CDCA contra FUTSALA VILLAVERDE (Jornada 14)."*
 
 ### Abstención Controlada (Guardrails Anti-Alucinación)
 *   **Pregunta de Evaluación:** *"¿Cuál es el menú del restaurante del Polideportivo Gallur para este fin de semana?"*
-*   **Chunks Recuperados (\(K=3\)):** Fragmentos generales sobre instalaciones de Gallur, sin datos gastronómicos en el corpus.
-*   **Respuesta del LLM:** *"Lo siento, pero no tengo acceso a la información sobre los menús del restaurante en el corpus documental autorizado. Como asistente oficial, no puedo proveer datos que no estén explícitamente validados en el sistema."*
+*   **Chunks Recuperados (\(K=3\)):** Fragmentos irrelevantes del corpus.
+*   **Respuesta del LLM:** *"No puedo responder a la pregunta ya que el contexto proporcionado no contiene información sobre el menú del restaurante del Polideportivo Gallur."*
 
 ---
 
@@ -86,7 +90,7 @@ Durante las fases de pruebas intensivas detectamos **tres fallos críticos** en 
 *   **Siguiente Paso (Next Step):** Implementar una estrategia de **RAG Híbrido / Text-to-SQL** o un parser intermedio en `src/load.py` que pre-calcule estadísticas clave (máximos, mínimos, líderes de grupo) y los inyecte como metadatos estructurados directamente en el prompt del sistema.
 
 ### Fallo 2: Ruido semántico por términos homónimos (Instalación vs. Deporte)
-*   **Síntoma:** Consultas sobre el deporte *"Tenis"* recuperaban normativas sobre *"Pistas de Tenis"* (infraestructura física) pero ignoraban datos de *"Partidos de Tenis"* contenidos en los CSV de clasificaciones debido a que la distancia vectorial penalizaba los esquemas de tablas.
+*   **Síntoma:** Consultas sobre el deporte *"Tenis"* recuperaban datos de *"Partidos de Tenis"* contenidos en los CSV de clasificaciones pero ignoraban normativas sobre *"Pistas de Tenis"* (infraestructura física) debido a que la distancia vectorial penalizaba los tetxtos peor estructurados.
 *   **Siguiente Paso (Next Step):** Aplicar técnicas de **Re-ranking (ej. Cohere o Vertex AI Rerank)** en `src/retrieve.py` tras la búsqueda inicial de ChromaDB. Esto reordenará los top-K bloques basándose en la relevancia de la intención de la pregunta antes de enviarlos al LLM.
 
 ### Fallo 3: Respuestas incompletas en normativas cruzadas (Fragmentación Legal)
