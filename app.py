@@ -90,7 +90,7 @@ if prompt := st.chat_input("Tu pregunta sobre la agenda cultural…"):
     # 2) Llamar al backend RAG (una pregunta → un dict; sin memoria de conversación)
     with st.chat_message("assistant"):
         with st.status("Consultando el corpus…", expanded=False) as status:
-            resultado = responder(pregunta=prompt, top_k=top_k)
+            menssage,resultado = responder(pregunta=prompt, top_k=top_k)
             status.update(label="Listo", state="complete")
 
         if resultado.get("error"):
