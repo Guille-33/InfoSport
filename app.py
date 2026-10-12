@@ -59,20 +59,19 @@ with st.sidebar:
     nombre = st.text_input("Nombre del bot", value="Asistente deportivo")
     top_k = st.slider("Top-K", min_value=1, max_value=5, value=TOP_K)
     st.caption("`TOP_K`: numero de fragmentos a recuperar")
-    if st.button("Limpiar chat", use_container_width=True):
+    if st.button("Limpiar chat", width='stretch'):
         st.session_state.messages = [inicio(nombre)]
+        st.session_state.df_metricas = pd.DataFrame(columns=["Pregunta", "Top_K", "Tiempo (s)", "Error"])
         st.rerun()
 
 st.title(nombre)
 st.caption("Ayuda en busqueda de tablas clasificatorias y normas de la Comunidad")
 
-datos_metricas={
-    'metricas':['TOP_k','tiempo'],
-    'valores': [top_k]
-}
-
 if "messages" not in st.session_state:
     st.session_state.messages = [inicio(nombre)]
+
+if "df_metricas" not in st.session_state:
+    st.session_state.df_metricas = pd.DataFrame(columns=["Pregunta", "Top_K", "Tiempo (s)", "Error"])
 
 # Repintar todo el hilo en cada ejecución del script
 for message in st.session_state.messages:
@@ -127,8 +126,20 @@ if prompt := st.chat_input("Tu pregunta sobre la agenda cultural…"):
                     "error": False,
                 }
             )
-    datos_metricas.get('valores',[]).append(time.time()-t_ini)
-    df = pd.DataFrame(datos_metricas)
-    st.subheader("Métricas de Rendimiento Mensual")
-    st.dataframe(df, width="stretch", hide_index=True)
+    tiempo_total=time.time()-t_ini
+    nueva_fila=pd.DataFrame([{
+        'Pregunta':prompt if len(prompt)<100 else f'{prompt[:100]}...',
+        'Top_K':top_k,
+        'Tiempo (s)':round(tiempo_total,3),
+        'Error': resultado.get('error',None)
+    }])
+    st.session_state.df_metricas = pd.concat([st.session_state.df_metricas, nueva_fila], ignore_index=True)
+    st.markdown("---")
+    st.subheader("Rendimiento")
+    st.dataframe(nueva_fila, width='stretch', hide_index=True)
 
+if "df_metricas" in st.session_state and not st.session_state.df_metricas.empty:
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("Log Rendimiento")
+        st.dataframe(st.session_state.df_metricas, width='stretch', hide_index=True)
