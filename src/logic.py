@@ -1,16 +1,17 @@
-from src.retrieve import search_k,json_2_datos,generar_context,generar_respuesta,build_prompt
+from src.retrieve import search_k,json_2_datos
+from src.generate import generar_context,generar_respuesta,build_prompt
 import json
 from src.google_authen import create_client
 from src.logging_utils import registrar_consulta_json
-from config import TOP_K
+from config import TOP_K,MAX_QUEST
 import time
 
-def resp_ok(datos:dict,context,resultados)->dict:
+def resp_ok(datos:dict,context,resultados)->tuple[str,dict]:
     evidencia=datos.get('hay_evidencia',False)
     respuesta=datos.get('respuesta','')
     fuentes=datos.get('fuentes_citadas',[])
     if evidencia:
-        print(f'''
+        texto=f'''
 RESPUESTA [OK]
 -------------------
 
@@ -18,63 +19,59 @@ RESPUESTA [OK]
 
 ---- EVIDENCIAS ---
 {"\n- ".join([f"- {f}" for f in fuentes])}
-''')
+'''
     else:
-        print(f'''
+        texto=f'''
 RESPUESTA [Not Found]
 -------------------
 
 Motivo: {respuesta}
 Para más información visite https://www.madrid.es/portales/munimadrid/es/Inicio/Cultura-ocio-y-deporte/Deportes?vgnextfmt=default&vgnextchannel=c7a8efff228fe410VgnVCM2000000c205a0aRCRD
-''')
-    return {
+'''
+    return texto, {
         "respuesta": respuesta,
         "contexto": context,
         "results": resultados,
         "fuentes": fuentes,
         "error": '',
     }
-def resp_error(respuesta,error):
-    print(f'''
+def resp_error(error,*,respuesta:str|None=None,contexto:str|None=None,results=None)->tuple[str,dict]:
+    texto=f'''
 REPUESTA [ERROR]
 -------------------
 
 La respuesta no se ha generado correctamente, si el error persiste contacte con los creadores
-''')
-    return{
+
+Error: {error}
+'''
+    return texto, {
         "respuesta": respuesta,
-        "contexto": '',
-        "results": '',
+        "contexto": contexto,
+        "results": results,
         "fuentes": [],
         "error": error,
     }
 
-def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
+def responder(*,pregunta:str,top_k:int|None=TOP_K)->tuple[str,dict]:
     t_inicio=time.time()
     if top_k is None:
         top_k=TOP_K
     client=create_client()
     question=(pregunta or "").strip()
     if not question:
-        return{
-            "respuesta": "",
-            "contexto": "",
-            "results": None,
-            "fuentes": [],
-            "error": "La pregunta no puede estar vacía.",
-        }
+        return resp_error('La pregunta no puede estar vacía')
+    elif len(pregunta)>MAX_QUEST:
+        return resp_error('La pregunta es demasiado larga')
     resultados,modelo_embedding=search_k(pregunta=question,top_k=top_k)
     context=generar_context(resultados=resultados)
     if context == "Fuera de scope":
-        return {
-            "respuesta": "",
-            "contexto": context,
-            "results": resultados,
-            "fuentes": [],
-            "error": "No se recuperó contexto. Revisa el índice.",
-        }
+        return resp_error('No de recuperó contexto. Revisa el índice',contexto=context,results=resultados)
     prompt=build_prompt(context=context,pregunta=question)
-    modelResp,modelo=generar_respuesta(client=client,prompt=prompt)
+    try:
+        modelResp,modelo=generar_respuesta(client=client,prompt=prompt)
+    except Exception as e:
+        error=str(e)
+        return resp_error(respuesta='',error=error)
     try:
         datos=json_2_datos(modelResp)
         se_abstuvo=not datos.get('hay_evidencia',False)
@@ -84,6 +81,10 @@ def responder(*,pregunta:str,top_k:int|None=TOP_K)->dict:
         return resp_ok(datos=datos,context=context,resultados=resultados)
     except json.JSONDecodeError as e:
         error=str(e)
-        return resp_error(respuesta=modelResp,error=error)
+        return resp_error(error,respuesta=modelResp)
+
+def rag_ask(pregunta:str,top_k:int|None)->str:
+    texto,diccionario=responder(pregunta=pregunta,top_k=top_k)
+    return texto
     
     

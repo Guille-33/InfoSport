@@ -1,0 +1,53 @@
+{
+  "descripcion": "Preguntas para evaluar respuestas generadas — Juegos Deportivos Municipales y Reglamento.",
+  "preguntas": [
+    {
+      "id": "q1",
+      "texto": "que informacion da estado en los partidos",
+      "deberia_abstenerse": false,
+      "notas": "In-corpus; respuesta apoyada en la descripción de campos del PDF de partidos."
+    },
+    {
+      "id": "q2",
+      "texto": "esta registrada la competicion de waterpolo",
+      "deberia_abstenerse": false,
+      "notas": "In-corpus; dato extraíble directamente del CSV de clasificación."
+    },
+    {
+      "id": "q3",
+      "texto": "¿Qué significan las siglas 'EMPD' que aparecen junto al nombre de algunos equipos en la clasificación?",
+      "deberia_abstenerse": true,
+      "notas": "Fuera de corpus; aunque el término aparece en el CSV de clasificación, el corpus no define el significado de ese acrónimo."
+    },
+    {
+      "id": "q4",
+      "texto": "¿hay partidos suspendidos?",
+      "deberia_abstenerse": false,
+      "notas": "In-Corpus: se extrae directamente de partidos.csv"
+    },
+    {
+      "id": "q5",
+      "texto": "¿Cuáles son las coordenadas X e Y registradas para el campo del partido disputado entre 'PECHETINGS FC' y 'GRAN CAPITAN AMIDECU' el 2026-01-31?",
+      "deberia_abstenerse": false,
+      "notas": "In-corpus; datos cruzados del CSV de partidos para esa fecha y equipos (-3.691159; 40.394479)."
+    },
+    {
+      "id": "q6",
+      "texto": "multa económica máxima se aplica para las infracciones consideradas como faltas muy graves",
+      "deberia_abstenerse": false,
+      "notas": "In-corpus; tipificado en el Artículo 60.1.b del Reglamento (hasta 1.500 euros)."
+    },
+    {
+      "id": "q7",
+      "texto": "¿Cuántas calorías en promedio quema un adulto promedio jugando 45 minutos en las barcas de recreo?",
+      "deberia_abstenerse": true,
+      "notas": "Fuera de corpus — el reglamento menciona el tiempo de uso de las barcas, pero no incluye datos fisiológicos o de salud."
+    },
+    {
+      "id": "q8",
+      "texto": "cuales son las obligaciones de los usuarios de las insatlaciones deportivas",
+      "deberia_abstenerse": false,
+      "notas": "In-corpus; recogido en el reglamento."
+    }
+  ]
+}
