@@ -1,15 +1,15 @@
 import json
 
 from config import EVAL_JSON
-from .logic import responder
+from .logic import responder,rag_ask
 
 
 def evaluar_pregunta(item: dict) -> dict:
-    texto = item.get("texto", "")
-    resultado = responder(pregunta=texto)
+    pregunta = item.get("texto", "")
+    texto,resultado = responder(pregunta=pregunta)
     return {
         "id": item.get("id"),
-        "texto": texto,
+        "texto": pregunta,
         "deberia_abstenerse": bool(item.get("deberia_abstenerse")),
         "respuesta": resultado.get("respuesta", ""),
         "fuentes": resultado.get("fuentes") or [],
@@ -42,6 +42,6 @@ def ejecutar_evaluacion() -> None:
         print()
 def evaluar_k(pregunta:str)->None:
     print('TOP_K=2\n------------------------------\n')
-    responder(pregunta=pregunta,top_k=2)
+    print (rag_ask(pregunta=pregunta,top_k=2))
     print('\nTOP_K=5\n------------------------------\n')
-    responder(pregunta=pregunta,top_k=5)
+    print(rag_ask(pregunta=pregunta,top_k=5))

@@ -6,7 +6,7 @@ from src.embed import ejecutar_embeddings
 from src.index import index_2_chroma
 from src.retrieve import search_k
 from src.generate import generar_context
-from src.logic import responder
+from src.logic import rag_ask
 from src.eval import ejecutar_evaluacion,evaluar_k
 
 def _cmd_prepare(create:bool=False) -> None:   
@@ -25,16 +25,7 @@ def _cmd_query(pregunta: str, top_k: int | None) -> None:
 
 
 def _cmd_ask(pregunta: str, top_k: int | None) -> None:
-    resultado = responder(pregunta=pregunta, top_k=top_k)
-    print(json.dumps(
-        {
-            "respuesta": resultado.get("respuesta"),
-            "fuentes": resultado.get("fuentes"),
-            "error": resultado.get("error"),
-        },
-        ensure_ascii=False,
-        indent=2,
-    ))
+    print(rag_ask(pregunta=pregunta,top_k=top_k))
 
 
 def main() -> None:
